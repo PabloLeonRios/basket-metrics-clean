@@ -1,53 +1,57 @@
 // src/app/api/auth/me/route.ts
-import { NextResponse, NextRequest } from 'next/server';
-import { verifyAuth } from '@/lib/auth';
-import dbConnect from '@/lib/dbConnect';
-import Team from '@/lib/models/Team';
+import { NextRequest, NextResponse } from "next/server";
+import { COOKIE_NAME } from "@/lib/constants";
+
+/**
+ * ==========================================================
+ * NOTAS PARA PABLITO (ME MOCK TEMPORAL)
+ * ==========================================================
+ * Objetivo:
+ * - Evitar dependencia de Mongo en /api/auth/me
+ * - Mantener el frontend funcionando con usuario mock
+ */
 
 export async function GET(request: NextRequest) {
-  const token = request.cookies.get('token')?.value;
-  const verified = await verifyAuth(token);
+  try {
+    const token = request.cookies.get(COOKIE_NAME)?.value;
 
-  if (verified.success && verified.payload) {
-    let payloadWithLogoUrl = verified.payload;
-
-    // Fetch team logoUrl if user has a team but no logoUrl in the token
-    if (
-      verified.payload.team &&
-      typeof verified.payload.team === 'object' &&
-      !verified.payload.team.logoUrl
-    ) {
-      await dbConnect();
-      const teamId =
-        verified.payload.team._id ||
-        (verified.payload.team as unknown as Record<string, unknown>).id;
-      if (teamId) {
-        try {
-          const team = await Team.findById(teamId).select('logoUrl').lean();
-          if (team && team.logoUrl) {
-            payloadWithLogoUrl = {
-              ...verified.payload,
-              team: {
-                ...verified.payload.team,
-                logoUrl: team.logoUrl,
-              },
-            };
-          }
-        } catch (error) {
-          console.error('Error fetching team logoUrl:', error);
-          // Continue returning the payload without logoUrl on error
-        }
-      }
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: "No autenticado." },
+        { status: 401 }
+      );
     }
 
+    const user = {
+      _id: "dev-pablo",
+      name: "Pablo Dev",
+      email: "dev@basketmetrics.com",
+      role: "entrenador",
+      isActive: true,
+      team: {
+        _id: "dev-team",
+        name: "Dev Team",
+        logoUrl: "",
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    return NextResponse.json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Error desconocido";
+
     return NextResponse.json(
-      { success: true, data: payloadWithLogoUrl },
-      { status: 200 },
-    );
-  } else {
-    return NextResponse.json(
-      { success: false, message: verified.message },
-      { status: 401 },
+      {
+        success: false,
+        message: "Error al obtener usuario mock.",
+        error: errorMessage,
+      },
+      { status: 500 }
     );
   }
 }
