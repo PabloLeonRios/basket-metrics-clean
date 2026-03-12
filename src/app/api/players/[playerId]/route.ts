@@ -1,184 +1,136 @@
 // src/app/api/players/[playerId]/route.ts
-import { NextResponse, NextRequest } from 'next/server';
-import dbConnect from '@/lib/dbConnect';
-import Player from '@/lib/models/Player';
-import User from '@/lib/models/User';
-import GameEvent from '@/lib/models/GameEvent';
-import { verifyAuth } from '@/lib/auth';
+import { NextRequest, NextResponse } from "next/server";
 
-// GET: Obtener un jugador específico
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ playerId: string }> },
-) {
-  const token = request.cookies.get('token')?.value;
-  const verified = await verifyAuth(token);
+/**
+ * ==========================================================
+ * NOTAS PARA PABLITO (PLAYER [playerId] MOCK TEMPORAL)
+ * ==========================================================
+ * Motivo:
+ * - El endpoint real depende de verifyAuth + dbConnect + modelos Mongo.
+ * - Para esta etapa queremos destrabar Vercel y enfocarnos en frontend.
+ *
+ * Qué hace ahora:
+ * - mantiene la ruta dinámica
+ * - responde con mock para GET / PATCH / DELETE
+ *
+ * Futuro:
+ * - restaurar verifyAuth
+ * - restaurar dbConnect
+ * - restaurar Player / User / GameEvent
+ */
 
-  if (!verified.success) {
-    return NextResponse.json(
-      { success: false, message: verified.message },
-      { status: 401 },
-    );
-  }
+type RouteContext = {
+  params: Promise<{ playerId: string }>;
+};
 
-  const { playerId } = await params;
-  await dbConnect();
+export async function GET(_request: NextRequest, { params }: RouteContext) {
   try {
-    const player = await Player.findById(playerId).populate(
-      'user',
-      'email isActive',
-    );
-    if (!player) {
+    const { playerId } = await params;
+
+    if (!playerId) {
       return NextResponse.json(
-        { success: false, message: 'Jugador no encontrado' },
-        { status: 404 },
+        { success: false, message: "Se requiere playerId." },
+        { status: 400 },
       );
     }
-    return NextResponse.json({ success: true, data: player });
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Error desconocido';
-    return NextResponse.json(
-      { success: false, message: 'Error en el servidor', error: errorMessage },
-      { status: 500 },
-    );
-  }
-}
 
-// PUT: Actualizar un jugador
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ playerId: string }> },
-) {
-  const token = request.cookies.get('token')?.value;
-  const verified = await verifyAuth(token);
-
-  if (!verified.success) {
-    return NextResponse.json(
-      { success: false, message: verified.message },
-      { status: 401 },
-    );
-  }
-
-  const { playerId } = await params;
-  await dbConnect();
-  try {
-    const body = await request.json();
-    const {
-      name,
-      dorsal,
-      position,
-      isActive,
-      team,
-      isRival,
-      photoUrl,
-      height,
-      weight,
-      birthDate,
-    } = body;
-
-    const updateData: Record<string, unknown> = {
-      name,
-      dorsal,
-      position,
-      isActive,
-      team,
-    };
-    if (isRival !== undefined) {
-      updateData.isRival = isRival;
-    }
-    if (photoUrl !== undefined) {
-      updateData.photoUrl = photoUrl;
-    }
-    if (height !== undefined) {
-      updateData.height = height;
-    }
-    if (weight !== undefined) {
-      updateData.weight = weight;
-    }
-    if (birthDate !== undefined) {
-      updateData.birthDate = birthDate;
-    }
-
-    const updatedPlayer = await Player.findByIdAndUpdate(playerId, updateData, {
-      returnDocument: 'after',
-      runValidators: true,
+    return NextResponse.json({
+      success: true,
+      data: {
+        _id: playerId,
+        name: "Jugador Demo",
+        number: 7,
+        position: "Base",
+        height: "1.82",
+        weight: "78",
+        team: {
+          _id: "dev-team",
+          name: "Dev Team",
+          logoUrl: "",
+        },
+        source: "mock",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
     });
-
-    if (!updatedPlayer) {
-      return NextResponse.json(
-        { success: false, message: 'Jugador no encontrado' },
-        { status: 404 },
-      );
-    }
-
-    // Also update the associated User's name if it has changed
-    if (name) {
-      await User.findByIdAndUpdate(updatedPlayer.user, { name });
-    }
-
-    return NextResponse.json({ success: true, data: updatedPlayer });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Error desconocido';
+    const err = error as Error;
     return NextResponse.json(
       {
         success: false,
-        message: 'Error al actualizar el jugador',
-        error: errorMessage,
+        message: "Error al obtener jugador mock.",
+        error: err.message,
       },
       { status: 500 },
     );
   }
 }
 
-// DELETE: Eliminar un jugador
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ playerId: string }> },
-) {
-  const token = request.cookies.get('token')?.value;
-  const verified = await verifyAuth(token);
-
-  if (!verified.success) {
-    return NextResponse.json(
-      { success: false, message: verified.message },
-      { status: 401 },
-    );
-  }
-
-  const { playerId } = await params;
-  await dbConnect();
+export async function PATCH(request: NextRequest, { params }: RouteContext) {
   try {
-    const player = await Player.findById(playerId);
-    if (!player) {
+    const { playerId } = await params;
+    const body = await request.json().catch(() => ({}));
+
+    if (!playerId) {
       return NextResponse.json(
-        { success: false, message: 'Jugador no encontrado' },
-        { status: 404 },
+        { success: false, message: "Se requiere playerId." },
+        { status: 400 },
       );
     }
 
-    // Delete associated game events
-    await GameEvent.deleteMany({ player: playerId });
-
-    // Delete associated user
-    await User.findByIdAndDelete(player.user);
-
-    // Delete the player
-    await Player.findByIdAndDelete(playerId);
-
     return NextResponse.json({
       success: true,
-      message: 'Jugador eliminado correctamente',
+      message: "Jugador mock actualizado correctamente.",
+      data: {
+        _id: playerId,
+        ...body,
+        source: "mock",
+        updatedAt: new Date().toISOString(),
+      },
     });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Error desconocido';
+    const err = error as Error;
     return NextResponse.json(
       {
         success: false,
-        message: 'Error al eliminar el jugador',
-        error: errorMessage,
+        message: "Error al actualizar jugador mock.",
+        error: err.message,
+      },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: RouteContext,
+) {
+  try {
+    const { playerId } = await params;
+
+    if (!playerId) {
+      return NextResponse.json(
+        { success: false, message: "Se requiere playerId." },
+        { status: 400 },
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Jugador mock eliminado correctamente.",
+      data: {
+        _id: playerId,
+        deleted: true,
+        source: "mock",
+      },
+    });
+  } catch (error) {
+    const err = error as Error;
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Error al eliminar jugador mock.",
+        error: err.message,
       },
       { status: 500 },
     );
