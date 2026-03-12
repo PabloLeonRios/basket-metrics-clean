@@ -1,147 +1,145 @@
-// src/app/login/page.tsx
-'use client';
-
-import { useState, FormEvent, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ROLES } from '@/lib/constants';
-import { useAuth } from '@/hooks/useAuth';
+"use client";
 
 /**
  * ==========================================
- * NOTAS PARA PABLITO (DEV MODE / LOGIN)
+ * NOTAS PARA PABLITO (LOGIN FRONTEND)
  * ==========================================
  *
- * Para desarrollo frontend se permite bypass del login.
- * Cuando NODE_ENV === development redirigimos directo
- * al panel para poder trabajar la UI sin autenticación.
+ * Este archivo corresponde a la pantalla de login del frontend.
  *
- * En producción el flujo de login sigue intacto.
+ * Objetivo actual:
+ * - Proveer una experiencia visual moderna tipo SaaS
+ * - Mantener el login funcional en modo DEMO
+ * - No depender todavía de MongoDB ni backend real
+ *
+ * Flujo actual:
+ * 1) Usuario ingresa email + password
+ * 2) Se hace POST a:
+ *
+ *    /api/auth/login
+ *
+ * 3) Ese endpoint actualmente devuelve:
+ *    cookie "mock-token"
+ *
+ * 4) El middleware acepta ese token en modo demo
+ *
+ * 5) Si el login responde OK:
+ *
+ *    router.push("/panel")
+ *
+ * FUTURA MIGRACIÓN (BACKEND REAL)
+ *
+ * Cuando conectemos Mongo:
+ *
+ * - /api/auth/login validará usuario en DB
+ * - generará JWT real
+ * - guardará cookie segura
+ *
+ * Este archivo NO necesita cambios
+ * porque el endpoint será el mismo.
+ *
  */
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user } = useAuth();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  /**
-   * Bypass total del login en desarrollo
-   */
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      router.replace('/panel');
-      return;
-    }
-
-    if (user) {
-      if (user.role === ROLES.ADMIN) {
-        router.replace('/panel/admin/users');
-      } else {
-        router.replace('/panel');
-      }
-    }
-  }, [user, router]);
-
-  const handleSubmit = async (e: FormEvent) => {
+  const handleLogin = async (e: any) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
 
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Error al iniciar sesión.');
-      }
-
-      if (data.data.role === ROLES.ADMIN) {
-        router.push('/panel/admin/users');
-      } else {
-        router.push('/panel');
-      }
-
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Ocurrió un error inesperado.',
-      );
-    } finally {
-      setLoading(false);
+    if (res.ok) {
+      router.push("/panel");
     }
   };
 
-  const inputStyles =
-    'w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-orange-500 transition-shadow';
-
-  const labelStyles =
-    'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1';
-
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-gray-950 rounded-xl shadow-lg">
-        <h1 className="text-3xl font-bold text-center text-gray-900 dark:text-gray-50">
-          Iniciar Sesión
+    <div className="min-h-screen flex bg-[#0f172a] text-white">
+
+      {/* LEFT SIDE */}
+      <div className="w-1/2 flex flex-col justify-center px-20 bg-gradient-to-br from-[#0f172a] to-[#1e293b]">
+
+        <h1 className="text-5xl font-bold mb-6">
+          Basket <span className="text-orange-500">Metrics</span>
         </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="email" className={labelStyles}>
-              Email
-            </label>
+        <p className="text-lg text-gray-300 mb-10">
+          Analítica avanzada para entrenadores y jugadores de baloncesto.
+          Toma decisiones basadas en datos.
+        </p>
+
+        <div className="space-y-4 text-gray-300">
+
+          <div className="flex items-center gap-3">
+            🏀 <span>Game Tracker en tiempo real</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            📊 Analítica avanzada de rendimiento</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            🤖 <span>Asistente IA para decisiones tácticas</span>
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* RIGHT SIDE LOGIN */}
+      <div className="w-1/2 flex items-center justify-center">
+
+        <div className="bg-white text-black rounded-xl shadow-2xl p-10 w-[420px]">
+
+          <h2 className="text-2xl font-bold mb-6 text-center">
+            Iniciar Sesión
+          </h2>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+
             <input
-              type="email"
-              id="email"
+              className="w-full border rounded-lg p-3"
+              placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className={inputStyles}
-              required
             />
-          </div>
 
-          <div>
-            <label htmlFor="password" className={labelStyles}>
-              Contraseña
-            </label>
             <input
               type="password"
-              id="password"
+              className="w-full border rounded-lg p-3"
+              placeholder="Contraseña"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={inputStyles}
-              required
             />
-          </div>
 
-          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            <button
+              className="w-full bg-orange-500 text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition"
+            >
+              Iniciar sesión
+            </button>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full px-6 py-3 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-colors shadow-md disabled:bg-gray-400"
-          >
-            {loading ? 'Iniciando...' : 'Iniciar Sesión'}
-          </button>
-        </form>
+          </form>
 
-        <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
-          ¿No tienes una cuenta?{' '}
-          <Link
-            href="/register"
-            className="font-medium text-orange-600 hover:text-orange-500 hover:underline"
-          >
-            Regístrate
-          </Link>
-        </p>
+          <p className="text-center mt-4 text-sm">
+            ¿No tienes cuenta?{" "}
+            <a href="/register" className="text-orange-500">
+              Regístrate
+            </a>
+          </p>
+
+        </div>
+
       </div>
+
     </div>
   );
 }
