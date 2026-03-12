@@ -1,0 +1,220 @@
+// src/components/help/HelpContent.tsx
+'use client';
+
+import React from 'react';
+
+const HelpSection = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) => (
+  <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 mb-8">
+    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 border-b-2 border-blue-500 pb-2">
+      {title}
+    </h2>
+    {children}
+  </div>
+);
+
+const Definition = ({
+  term,
+  definition,
+}: {
+  term: string;
+  definition: string;
+}) => (
+  <div className="mb-3">
+    <p className="font-semibold text-lg text-gray-800 dark:text-gray-100">
+      {term}
+    </p>
+    <p className="text-gray-600 dark:text-gray-300 ml-2">{definition}</p>
+  </div>
+);
+
+const Formula = ({
+  name,
+  formula,
+  explanation,
+}: {
+  name: string;
+  formula: string;
+  explanation: string;
+}) => (
+  <div className="mb-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+    <p className="font-mono text-lg font-semibold text-blue-600 dark:text-blue-400">
+      {name}
+    </p>
+    <p className="font-mono text-gray-800 dark:text-gray-200 my-2 bg-gray-200 dark:bg-gray-900 p-2 rounded-md inline-block">
+      {formula}
+    </p>
+    <p className="text-sm text-gray-500 dark:text-gray-400">{explanation}</p>
+  </div>
+);
+
+export default function HelpContent() {
+  return (
+    <div className="container mx-auto p-4">
+      <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white mb-6">
+        Glosario de Estadísticas y Ayuda
+      </h1>
+
+      <HelpSection title="Abreviaturas de Estadísticas Básicas">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div>
+            <Definition term="PTS" definition="Puntos Anotados Totales" />
+            <Definition term="REB" definition="Rebotes Totales" />
+            <Definition term="OREB" definition="Rebotes Ofensivos" />
+            <Definition term="DREB" definition="Rebotes Defensivos" />
+          </div>
+          <div>
+            <Definition term="AST" definition="Asistencias" />
+            <Definition term="STL" definition="Robos (Steals)" />
+            <Definition term="BLK" definition="Tapones (Blocks)" />
+            <Definition term="TOV" definition="Pérdidas de Balón (Turnovers)" />
+          </div>
+          <div>
+            <Definition term="PF" definition="Faltas Personales" />
+            <Definition
+              term="FGM / FGA"
+              definition="Tiros de Campo Anotados / Intentados"
+            />
+            <Definition
+              term="3PM / 3PA"
+              definition="Tiros de 3 Puntos Anotados / Intentados"
+            />
+            <Definition
+              term="FTM / FTA"
+              definition="Tiros Libres Anotados / Intentados"
+            />
+          </div>
+        </div>
+      </HelpSection>
+
+      <HelpSection title="Tipos de Sesión">
+        <p className="mb-6 text-gray-700 dark:text-gray-300">
+          Existen diferentes tipos de sesión que determinan qué acciones están
+          disponibles y cómo se calculan las estadísticas y puntuaciones (Game
+          Score).
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div>
+            <Definition
+              term="Partido"
+              definition="Sesión competitiva estándar entre tu equipo y un rival. Permite registrar todas las acciones del juego (tiros, rebotes, faltas, cambios, tiempos muertos)."
+            />
+            <Definition
+              term="Entrenamiento"
+              definition="Sesión de práctica genérica. Útil para medir el rendimiento interno de tu equipo sin la estructura rígida de un partido competitivo."
+            />
+          </div>
+          <div>
+            <Definition
+              term="Lanzamiento con Defensa"
+              definition="Sesión enfocada en la toma de tiros bajo presión. A diferencia de las sesiones normales, los tiros anotados en este modo reciben un bonus multiplicador de 1.5x en el cálculo de la Valoración (VAL) para reflejar la mayor dificultad."
+            />
+            <Definition
+              term="Lanzamiento"
+              definition="Sesión enfocada exclusivamente en la mecánica y volumen de tiro libre de marca. Ideal para rutinas de repetición."
+            />
+          </div>
+          <div>
+            <Definition
+              term="Físico"
+              definition="Sesión para registrar acondicionamiento físico. No se centra en estadísticas de balón."
+            />
+            <Definition
+              term="Táctica"
+              definition="Sesión enfocada en el aprendizaje de jugadas y posicionamiento."
+            />
+            <Definition
+              term="Partido de Temporada"
+              definition="Igual que 'Partido', pero se puede filtrar en reportes estadísticos para separar juegos oficiales de amistosos."
+            />
+          </div>
+        </div>
+      </HelpSection>
+
+      <HelpSection title="Fórmulas de Estadísticas Avanzadas">
+        <p className="mb-6 text-gray-700 dark:text-gray-300">
+          Estas métricas ofrecen una visión más profunda del rendimiento de un
+          jugador o equipo, más allá de las estadísticas tradicionales.
+        </p>
+
+        <Formula
+          name="Idoneidad (Suitability Score)"
+          formula="Σ (Puntos por Tag) + Bonus"
+          explanation="Puntuación generada por la IA para una situación de partido. Suma puntos por cada 'Tag' (perfil) que un jugador posee, y aplica un bonus por estadísticas de carrera. El resultado se normaliza en una escala de 1 a 10 para indicar qué tan adecuado es el jugador."
+        />
+
+        <Formula
+          name="eFG% (Effective Field Goal Percentage)"
+          formula="(FGM + 0.5 * 3PM) / FGA"
+          explanation="Ajusta el porcentaje de tiros de campo para darle el valor adicional a los triples. Un triple anotado vale 1.5 veces un tiro de dos puntos en esta métrica, reflejando su impacto real en el marcador."
+        />
+
+        <Formula
+          name="TS% (True Shooting Percentage)"
+          formula="Puntos / (2 * (FGA + 0.44 * FTA))"
+          explanation="Mide la eficiencia de un jugador al anotar, teniendo en cuenta tiros de campo, triples y tiros libres. Es una de las mejores métricas para evaluar la eficiencia ofensiva global de un jugador."
+        />
+
+        <Formula
+          name="Valoración (VAL)"
+          formula="PT + RT + AS + REC + TAP + FR - (Tiros Fallados) - PÉR - FP"
+          explanation="El índice de eficiencia del jugador en el partido, utilizado por la Confederación Argentina de Básquetbol y en ligas FIBA. Valora positivamente todas las acciones productivas y resta las acciones negativas (tiros fallados, pérdidas y faltas)."
+        />
+
+        <Formula
+          name="Posesiones (Estimación de Dean Oliver)"
+          formula="FGA - OREB + TOV + (0.44 * FTA)"
+          explanation="Una estimación del número de posesiones que un equipo o jugador ha utilizado. Es la base para calcular los Ratings Ofensivo y Defensivo, ya que permite analizar la eficiencia por cada 100 posesiones."
+        />
+
+        <Formula
+          name="Rating Ofensivo (ORtg)"
+          formula="(Puntos / Posesiones) * 100"
+          explanation="Puntos anotados por un equipo o jugador por cada 100 posesiones. Mide la eficiencia ofensiva independientemente del ritmo de juego."
+        />
+
+        <Formula
+          name="Rating Defensivo (DRtg)"
+          formula="(Puntos Oponente / Posesiones Oponente) * 100"
+          explanation="Puntos recibidos por un equipo o jugador por cada 100 posesiones. Mide la eficiencia defensiva."
+        />
+
+        <Formula
+          name="Porcentaje de Uso (USG%)"
+          formula="100 * ((FGA + 0.44 * FTA + TOV) * (Team MIN / 5)) / (MIN * (Team FGA + 0.44 * Team FTA + Team TOV))"
+          explanation="Mide el porcentaje de jugadas de equipo que un jugador consumió mientras estaba en la pista."
+        />
+
+        <Formula
+          name="Porcentaje de Rebote Ofensivo (ORB%)"
+          formula="100 * (ORB * (Team MIN / 5)) / (MIN * (Team ORB + Opponent DRB))"
+          explanation="El porcentaje de rebotes ofensivos disponibles que un jugador obtuvo mientras estaba en la pista."
+        />
+
+        <Formula
+          name="Porcentaje de Rebote Defensivo (DRB%)"
+          formula="100 * (DRB * (Team MIN / 5)) / (MIN * (Team DRB + Opponent ORB))"
+          explanation="El porcentaje de rebotes defensivos disponibles que un jugador obtuvo mientras estaba en la pista."
+        />
+
+        <Formula
+          name="Porcentaje de Asistencias (AST%)"
+          formula="100 * AST / (((MIN / (Team MIN / 5)) * Team FGM) - FGM)"
+          explanation="Estimación del porcentaje de tiros de campo anotados por los compañeros que el jugador asistió mientras estaba en la pista."
+        />
+
+        <Formula
+          name="Porcentaje de Pérdidas (TOV%)"
+          formula="100 * TOV / (FGA + 0.44 * FTA + TOV)"
+          explanation="Estimación de pérdidas de balón por cada 100 jugadas."
+        />
+      </HelpSection>
+    </div>
+  );
+}

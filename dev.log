@@ -1,0 +1,64 @@
+
+> basket-metrics@0.1.0 dev
+> next dev -H 0.0.0.0
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://0.0.0.0:3000
+
+✓ Starting...
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+✓ Ready in 1691ms
+○ Compiling /login ...
+ GET /login 200 in 7.2s (compile: 6.9s, render: 342ms)
+⨯ Error: Por favor, define la variable de entorno MONGODB_URI dentro de .env.local
+    at module evaluation (src/lib/dbConnect.ts:7:9)
+    at module evaluation (src/app/api/auth/login/route.ts:3:1)
+    at Object.<anonymous> (.next/dev/server/app/api/auth/login/route.js:5:3)
+   5 |
+   6 | if (!MONGODB_URI) {
+>  7 |   throw new Error(
+     |         ^
+   8 |     'Por favor, define la variable de entorno MONGODB_URI dentro de .env.local',
+   9 |   );
+  10 | } {
+  page: '/api/auth/login'
+}
+ POST /api/auth/login 500 in 3.4s (compile: 3.0s, proxy.ts: 131ms, render: 240ms)
+Advertencia: JWT_SECRET no está definido, usando valor por defecto inseguro.
+ GET /panel/sessions/new 200 in 2.2s (compile: 2.0s, proxy.ts: 16ms, render: 179ms)
+⨯ Error: Por favor, define la variable de entorno MONGODB_URI dentro de .env.local
+    at module evaluation (src/lib/dbConnect.ts:7:9)
+    at module evaluation (src/app/api/auth/login/route.ts:3:1)
+    at Object.<anonymous> (.next/dev/server/app/api/auth/login/route.js:5:3)
+   5 |
+   6 | if (!MONGODB_URI) {
+>  7 |   throw new Error(
+     |         ^
+   8 |     'Por favor, define la variable de entorno MONGODB_URI dentro de .env.local',
+   9 |   );
+  10 | } {
+  page: '/api/auth/me'
+}
+ GET /api/auth/me 500 in 326ms (compile: 310ms, render: 16ms)
+ GET /login 200 in 29ms (compile: 4ms, render: 25ms)
+ GET /login 200 in 66ms (compile: 4ms, render: 61ms)
+⨯ Error: Por favor, define la variable de entorno MONGODB_URI dentro de .env.local
+    at module evaluation (src/lib/dbConnect.ts:7:9)
+    at module evaluation (src/app/api/auth/login/route.ts:3:1)
+    at Object.<anonymous> (.next/dev/server/app/api/auth/login/route.js:5:3)
+   5 |
+   6 | if (!MONGODB_URI) {
+>  7 |   throw new Error(
+     |         ^
+   8 |     'Por favor, define la variable de entorno MONGODB_URI dentro de .env.local',
+   9 |   );
+  10 | } {
+  page: '/api/auth/login'
+}
+ POST /api/auth/login 500 in 79ms (compile: 59ms, proxy.ts: 8ms, render: 12ms)

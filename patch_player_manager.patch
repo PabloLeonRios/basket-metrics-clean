@@ -1,0 +1,184 @@
+--- src/components/players/PlayerManager.tsx
++++ src/components/players/PlayerManager.tsx
+@@ -3,7 +3,7 @@
+ 'use client';
+
+-import { useState, useEffect, FormEvent } from 'react';
++import { useState, useEffect, FormEvent, useRef } from 'react';
+ import Link from 'next/link';
+ import { useAuth } from '@/hooks/useAuth';
+ import { IPlayer } from '@/types/definitions';
+@@ -28,8 +28,7 @@
+   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+   const [showInactive, setShowInactive] = useState(false);
+-  const [showRivals, setShowRivals] = useState(false);
+   const [activeTab, setActiveTab] = useState<'mine' | 'rivals'>('mine');
+
+   // Edit Modal state
+   const [editingPlayer, setEditingPlayer] = useState<IPlayer | null>(null);
+@@ -38,6 +37,10 @@
+   const [editPosition, setEditPosition] = useState('');
+   const [editTeam, setEditTeam] = useState('');
+   const [editIsRival, setEditIsRival] = useState(false);
++  const [editPhoto, setEditPhoto] = useState('');
++  const [editHeight, setEditHeight] = useState('');
++  const [editWeight, setEditWeight] = useState('');
++  const [editBirthDate, setEditBirthDate] = useState('');
++  const photoInputRef = useRef<HTMLInputElement | null>(null);
+
+   // Export methods
+@@ -120,9 +123,6 @@
+         if (showInactive) {
+           url += '&status=inactive';
+         }
+-        if (showRivals) {
+-          url += '&showRivals=true';
+-        }
+         if (debouncedSearchTerm) {
+           url += `&search=${debouncedSearchTerm}`;
+         }
+@@ -155,7 +155,6 @@
+     playersPerPage,
+     debouncedSearchTerm,
+     showInactive,
+-    showRivals,
+     activeTab,
+   ]);
+
+@@ -165,6 +164,10 @@
+         position: editPosition,
+         team: editTeam,
+         isRival: editIsRival,
++        photoUrl: editPhoto,
++        height: editHeight ? Number(editHeight) : undefined,
++        weight: editWeight ? Number(editWeight) : undefined,
++        birthDate: editBirthDate ? editBirthDate : undefined,
+       };
+       const response = await fetch(`/api/players/${editingPlayer._id}`, {
+         method: 'PUT',
+@@ -218,6 +221,12 @@
+     setEditPosition(player.position || '');
+     setEditTeam(player.team || '');
+     setEditIsRival(!!player.isRival);
++    setEditPhoto(player.photoUrl || '');
++    setEditHeight(player.height ? String(player.height) : '');
++    setEditWeight(player.weight ? String(player.weight) : '');
++    setEditBirthDate(
++      player.birthDate ? new Date(player.birthDate).toISOString().split('T')[0] : ''
++    );
+   };
+
+   const handlePageChange = (page: number) => {
+@@ -226,6 +235,28 @@
+
+   const labelStyles =
+     'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1';
++
++  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
++    const file = e.target.files?.[0];
++    if (!file) return;
++
++    const reader = new FileReader();
++    reader.onload = (event) => {
++      const img = new Image();
++      img.onload = () => {
++        const canvas = document.createElement('canvas');
++        const MAX_WIDTH = 400;
++        const scaleSize = MAX_WIDTH / img.width;
++        canvas.width = MAX_WIDTH;
++        canvas.height = img.height * scaleSize;
++        const ctx = canvas.getContext('2d');
++        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
++        setEditPhoto(canvas.toDataURL('image/jpeg', 0.8));
++      };
++      if (event.target?.result) img.src = event.target.result as string;
++    };
++    reader.readAsDataURL(file);
++  };
+
+   return (
+     <div className="p-4 sm:p-8">
+@@ -321,16 +352,17 @@
+             <Checkbox
+               label="Ver Inactivos"
+               checked={showInactive}
+               onChange={(e) => setShowInactive(e.target.checked)}
+             />
+-            <Checkbox
+-              label="Mostrar Rivales"
+-              checked={showRivals}
+-              onChange={(e) => setShowRivals(e.target.checked)}
+-            />
+             <div className="w-full max-w-xs">
+               <Input
+                 type="text"
+@@ -348,10 +380,17 @@
+             >
+               <div className="flex-grow flex items-center space-x-4">
+-                <JerseyIcon
+-                  number={player.dorsal}
+-                  className="h-24 w-24 flex-shrink-0"
+-                />
++                {player.photoUrl ? (
++                  // eslint-disable-next-line @next/next/no-img-element
++                  <img
++                    src={player.photoUrl}
++                    alt={`Foto de ${player.name}`}
++                    className="h-24 w-24 flex-shrink-0 rounded-full object-cover shadow-sm"
++                  />
++                ) : (
++                  <JerseyIcon
++                    number={player.dorsal}
++                    className="h-24 w-24 flex-shrink-0"
++                  />
++                )}
+                 <div className="flex-grow">
+                   <div className="flex items-center gap-2">
+@@ -450,6 +489,45 @@
+                   }
+                 />
+               </div>
++              <div>
++                <label className={labelStyles}>Foto de Perfil</label>
++                <div className="flex items-center gap-4">
++                  {editPhoto ? (
++                    // eslint-disable-next-line @next/next/no-img-element
++                    <img src={editPhoto} alt="Preview" className="h-16 w-16 rounded-full object-cover shadow" />
++                  ) : (
++                    <div className="h-16 w-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs text-gray-500">Sin foto</div>
++                  )}
++                  <input
++                    type="file"
++                    accept="image/*"
++                    className="hidden"
++                    ref={photoInputRef}
++                    onChange={handlePhotoUpload}
++                  />
++                  <div className="flex flex-col gap-2">
++                    <Button type="button" variant="secondary" onClick={() => photoInputRef.current?.click()} size="sm">
++                      Elegir foto...
++                    </Button>
++                    {editPhoto && (
++                      <button type="button" onClick={() => setEditPhoto('')} className="text-xs text-red-500 hover:text-red-700 text-left">
++                        Quitar foto
++                      </button>
++                    )}
++                  </div>
++                </div>
++              </div>
++              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t pt-4 mt-4 border-gray-200 dark:border-gray-700">
++                <div>
++                  <label className={labelStyles}>Estatura (cm)</label>
++                  <Input type="number" value={editHeight} onChange={(e) => setEditHeight(e.target.value)} placeholder="Ej: 195" />
++                </div>
++                <div>
++                  <label className={labelStyles}>Peso (kg)</label>
++                  <Input type="number" value={editWeight} onChange={(e) => setEditWeight(e.target.value)} placeholder="Ej: 85" />
++                </div>
++                <div>
++                  <label className={labelStyles}>Nacimiento</label>
++                  <Input type="date" value={editBirthDate} onChange={(e) => setEditBirthDate(e.target.value)} />
++                </div>
++              </div>
+               <div className="py-2">
+                 <Checkbox

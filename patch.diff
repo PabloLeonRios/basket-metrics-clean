@@ -1,0 +1,21 @@
+--- src/app/api/players/[playerId]/stats/route.ts
++++ src/app/api/players/[playerId]/stats/route.ts
+@@ -5,12 +5,19 @@
+ import Session from '@/lib/models/Session';
+ import mongoose from 'mongoose';
+ import { calculateStatsForSession } from '@/lib/engine/statsCalculator';
++import { verifyAuth } from '@/lib/auth';
+
+ export async function GET(
+   request: NextRequest,
+   { params }: { params: Promise<{ playerId: string }> },
+ ) {
+   await dbConnect();
++  const token = request.cookies.get('token')?.value;
++  const authResult = await verifyAuth(token);
++
++  if (!authResult.success) {
++    return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 });
++  }
+   try {
+     const { playerId } = await params;
