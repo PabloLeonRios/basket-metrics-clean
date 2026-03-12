@@ -1,49 +1,65 @@
 // src/app/api/assistant/proactive-suggestion/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/dbConnect';
-import Player from '@/lib/models/Player';
-import { verifyAuth } from '@/lib/auth';
-import PlayerGameStats from '@/lib/models/PlayerGameStats';
-import GameEvent from '@/lib/models/GameEvent';
-import {
-  generatePlayerProfiles,
-  getProactiveSuggestion,
-} from '@/lib/recommender/lineupRecommender';
-import mongoose from 'mongoose';
+import { NextRequest, NextResponse } from "next/server";
+
+/**
+ * ==========================================================
+ * NOTAS PARA PABLITO / FUTURA RECONEXIÓN A BACKEND REAL
+ * ==========================================================
+ * Estado actual:
+ * - Este endpoint quedó temporalmente en MODO MOCK.
+ * - Motivo: el deploy en Vercel fallaba porque esta ruta
+ *   exigía MONGODB_URI en build/runtime.
+ * - Objetivo de esta etapa: destrabar infraestructura para
+ *   que Pablo pueda trabajar frontend/UI sin depender de Mongo.
+ *
+ * Qué hacía antes este endpoint:
+ * - Conectaba a Mongo con dbConnect()
+ * - Validaba auth con verifyAuth()
+ * - Leía Player / PlayerGameStats / GameEvent
+ * - Construía perfiles con generatePlayerProfiles()
+ * - Calculaba sugerencia con getProactiveSuggestion()
+ *
+ * Qué hace ahora:
+ * - Mantiene la misma ruta API
+ * - Mantiene método POST
+ * - Valida mínimamente el body
+ * - Devuelve respuesta mock estable para no romper frontend
+ *
+ * Qué habrá que hacer cuando vuelvan al backend real:
+ * 1) Restaurar imports:
+ *    - dbConnect
+ *    - Player
+ *    - PlayerGameStats
+ *    - GameEvent
+ *    - verifyAuth
+ *    - generatePlayerProfiles
+ *    - getProactiveSuggestion
+ *    - mongoose
+ * 2) Volver a conectar Mongo con MONGODB_URI en Vercel
+ * 3) Reinstalar lógica real de recomendación
+ * 4) Confirmar que el frontend soporte:
+ *    - data real
+ *    - data null
+ *    - errores 401 / 500
+ *
+ * Recomendación futura:
+ * - Si quieren convivir MOCK + REAL, conviene usar:
+ *   process.env.USE_MOCK_ASSISTANT === "true"
+ *   para alternar sin tocar el archivo.
+ */
+
+type ProactiveSuggestionRequest = {
+  allPlayerIds?: string[];
+  onCourtPlayerIds?: string[];
+  sessionId?: string;
+  currentQuarter?: number;
+};
 
 export async function POST(request: NextRequest) {
-  await dbConnect();
-
-  const token = request.cookies.get('token')?.value;
-  const verified = await verifyAuth(token);
-
-  if (!verified.success) {
-    return NextResponse.json(
-      { success: false, message: verified.message },
-      { status: 401 },
-    );
-  }
   try {
-    const token = request.cookies.get('token')?.value;
-    const authResult = await verifyAuth(token);
-    if (!authResult.success) {
-      return NextResponse.json(
-        { success: false, message: authResult.message },
-        { status: 401 },
-      );
-    }
+    const body = (await request.json()) as ProactiveSuggestionRequest;
 
-    const {
-      allPlayerIds,
-      onCourtPlayerIds,
-      sessionId,
-      currentQuarter,
-    }: {
-      allPlayerIds: string[];
-      onCourtPlayerIds: string[];
-      sessionId: string;
-      currentQuarter?: number;
-    } = await request.json();
+    const { allPlayerIds, onCourtPlayerIds, sessionId, currentQuarter } = body;
 
     if (
       !allPlayerIds ||
@@ -52,80 +68,53 @@ export async function POST(request: NextRequest) {
       onCourtPlayerIds.length === 0
     ) {
       return NextResponse.json(
-        { success: false, message: 'Datos incompletos para la sugerencia.' },
+        {
+          success: false,
+          message: "Datos incompletos para la sugerencia.",
+        },
         { status: 400 },
       );
     }
 
-    // 1. Obtener perfiles de todos los jugadores
-    const allPlayers = await Player.find({ _id: { $in: allPlayerIds } }).select(
-      'name',
-    );
-    const allObjectIds = allPlayerIds.map(
-      (id) => new mongoose.Types.ObjectId(id),
-    );
-    const careerAverages = await PlayerGameStats.aggregate([
-      { $match: { player: { $in: allObjectIds } } },
-      {
-        $group: {
-          _id: '$player',
-          avgPoints: { $avg: '$points' },
-          avgAst: { $avg: '$ast' },
-          avgOrb: { $avg: '$orb' },
-          avgDrb: { $avg: '$drb' },
-          avgStl: { $avg: '$stl' },
-          avgTov: { $avg: '$tov' },
-          avg3pa: { $avg: '$3pa' },
-          avg3pm: { $avg: '$3pm' },
-        },
-      },
-    ]);
+    /**
+     * Respuesta MOCK:
+     * - estable para frontend
+     * - no depende de base de datos
+     * - sirve para seguir diseño/UI/UX
+     *
+     * Ajustar la forma exacta del objeto si el frontend espera
+     * nombres específicos. Si el frontend solo chequea success/data,
+     * esto ya alcanza para destrabar.
+     */
+    const mockSuggestion = {
+      type: "rotation",
+      priority: "medium",
+      title: "Sugerencia automática",
+      message:
+        "Considerar una rotación en cancha para mantener intensidad defensiva y frescura del quinteto.",
+      suggestedPlayerOut: onCourtPlayerIds[0] ?? null,
+      suggestedPlayerIn:
+        allPlayerIds.find((id) => !onCourtPlayerIds.includes(id)) ?? null,
+      quarter: currentQuarter ?? 1,
+      generatedAt: new Date().toISOString(),
+      source: "mock",
+    };
 
-    const statsMap = new Map();
-    careerAverages.forEach((stat) => {
-      statsMap.set(stat._id.toString(), stat);
+    return NextResponse.json({
+      success: true,
+      data: mockSuggestion,
+      message: "Sugerencia mock generada correctamente.",
     });
-
-    const playersWithStats = allPlayers.map((player) => {
-      const pStats = statsMap.get(player._id.toString());
-      return {
-        _id: player._id.toString(),
-        name: player.name,
-        careerAverages: pStats || null,
-      };
-    });
-    const allProfiles = generatePlayerProfiles(playersWithStats);
-
-    // 2. Obtener todos los eventos del partido
-    const gameEvents = await GameEvent.find({
-      sessionId,
-      isUndone: { $ne: true },
-    }).sort({
-      createdAt: -1,
-    });
-
-    // 3. Obtener la sugerencia proactiva
-    const suggestion = getProactiveSuggestion(
-      onCourtPlayerIds,
-      allProfiles,
-      gameEvents,
-      currentQuarter || 1,
-    );
-
-    if (!suggestion) {
-      return NextResponse.json({
-        success: true,
-        data: null,
-        message: 'La IA no tiene sugerencias por el momento.',
-      });
-    }
-
-    return NextResponse.json({ success: true, data: suggestion });
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : 'Error desconocido';
+      error instanceof Error ? error.message : "Error desconocido";
+
     return NextResponse.json(
-      { success: false, message: 'Error en el servidor', error: errorMessage },
+      {
+        success: false,
+        message: "Error en el servidor",
+        error: errorMessage,
+      },
       { status: 500 },
     );
   }
