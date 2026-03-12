@@ -1,104 +1,161 @@
 // src/app/api/assistant/recommend/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/dbConnect';
-import Player from '@/lib/models/Player';
-import { verifyAuth } from '@/lib/auth';
-import PlayerGameStats from '@/lib/models/PlayerGameStats';
-import {
-  generatePlayerProfiles,
-  recommendLineups,
-  GameSituation,
-} from '@/lib/recommender/lineupRecommender';
-import mongoose from 'mongoose';
+import { NextRequest, NextResponse } from "next/server";
+
+/**
+ * ==========================================================
+ * NOTAS PARA PABLITO / FUTURA RECONEXIÓN A BACKEND REAL
+ * ==========================================================
+ * Estado actual:
+ * - Endpoint temporalmente en MODO MOCK para permitir deploy en Vercel
+ *   sin depender de MongoDB.
+ *
+ * Motivo:
+ * - El build fallaba porque esta ruta importaba dbConnect/modelos y
+ *   exigía MONGODB_URI durante la compilación / evaluación del servidor.
+ *
+ * Qué hacía antes:
+ * - dbConnect()
+ * - verifyAuth()
+ * - Player.find(...)
+ * - PlayerGameStats.aggregate(...)
+ * - generatePlayerProfiles(...)
+ * - recommendLineups(...)
+ *
+ * Qué hace ahora:
+ * - Conserva la misma ruta y método POST
+ * - Valida mínimamente el body
+ * - Devuelve recomendaciones mock estables
+ * - Sirve para seguir trabajando UI/frontend sin romper la app
+ *
+ * Futuro backend real:
+ * 1) Restaurar imports:
+ *    - dbConnect
+ *    - Player
+ *    - verifyAuth
+ *    - PlayerGameStats
+ *    - generatePlayerProfiles
+ *    - recommendLineups
+ *    - mongoose
+ * 2) Configurar MONGODB_URI en Vercel
+ * 3) Volver a conectar auth + modelos reales
+ * 4) Confirmar shape exacto esperado por frontend
+ *
+ * Recomendación:
+ * - Más adelante conviene alternar REAL/MOCK con env:
+ *   process.env.USE_MOCK_RECOMMENDER === "true"
+ */
+
+type GameSituation = {
+  scoreDifference?: number;
+  timeRemaining?: number;
+  quarter?: number;
+  needThreePointShooting?: boolean;
+  needDefense?: boolean;
+  needPlaymaking?: boolean;
+  needRebounding?: boolean;
+};
+
+type RecommendRequest = {
+  playerIds?: string[];
+  situation?: GameSituation;
+};
 
 export async function POST(request: NextRequest) {
-  await dbConnect();
   try {
-    const token = request.cookies.get('token')?.value;
-    const authResult = await verifyAuth(token);
-    if (!authResult.success) {
-      return NextResponse.json(
-        { success: false, message: authResult.message },
-        { status: 401 },
-      );
-    }
-
-    const {
-      playerIds,
-      situation,
-    }: { playerIds: string[]; situation: GameSituation } = await request.json();
+    const body = (await request.json()) as RecommendRequest;
+    const { playerIds, situation } = body;
 
     if (!playerIds || playerIds.length < 5 || !situation) {
       return NextResponse.json(
         {
           success: false,
           message:
-            'Se requiere una lista de al menos 5 IDs de jugador y una situación.',
+            "Se requiere una lista de al menos 5 IDs de jugador y una situación.",
         },
         { status: 400 },
       );
     }
 
-    // 1. Obtener los datos de los jugadores (nombre)
-    const players = await Player.find({ _id: { $in: playerIds } }).select(
-      'name',
-    );
-    if (players.length !== playerIds.length) {
-      return NextResponse.json(
-        { success: false, message: 'Algunos IDs de jugador no son válidos.' },
-        { status: 400 },
-      );
-    }
+    /**
+     * MOCK de perfiles
+     * Se arma en base a los IDs recibidos para que el frontend tenga
+     * estructura consistente mientras se rediseña la interfaz.
+     */
+    const allProfiles = playerIds.map((id, index) => ({
+      _id: id,
+      name: `Jugador ${index + 1}`,
+      archetype:
+        index % 5 === 0
+          ? "Scorer"
+          : index % 5 === 1
+          ? "Playmaker"
+          : index % 5 === 2
+          ? "Defender"
+          : index % 5 === 3
+          ? "Shooter"
+          : "Rebounder",
+      confidence: 0.75,
+      source: "mock",
+    }));
 
-    // 2. Calcular los promedios de carrera para los jugadores seleccionados
-    const objectIds = playerIds.map((id) => new mongoose.Types.ObjectId(id));
-    const careerAverages = await PlayerGameStats.aggregate([
-      { $match: { player: { $in: objectIds } } },
+    /**
+     * MOCK de recomendaciones
+     * Mantenemos estructura razonable y estable.
+     * Si más adelante el frontend exige otra forma exacta, se ajusta.
+     */
+    const recommendations = [
       {
-        $group: {
-          _id: '$player',
-          avgPoints: { $avg: '$points' },
-          avgAst: { $avg: '$ast' },
-          avgOrb: { $avg: '$orb' },
-          avgDrb: { $avg: '$drb' },
-          avgStl: { $avg: '$stl' },
-          avgTov: { $avg: '$tov' },
-          avg3pa: { $avg: '$3pa' },
-          avg3pm: { $avg: '$3pm' },
-        },
+        id: "mock-rec-1",
+        title: "Quinteto equilibrado",
+        description:
+          "Combinación pensada para sostener defensa, circulación y amenaza exterior.",
+        lineup: playerIds.slice(0, 5),
+        fitScore: 92,
+        tags: ["balance", "defensa", "spacing"],
+        source: "mock",
       },
-    ]);
-
-    // Unir los nombres de los jugadores con sus promedios
-    const statsMap = new Map(
-      careerAverages.map((stat) => [stat._id.toString(), stat]),
-    );
-    const playersWithStats = players.map((player) => {
-      const pStats = statsMap.get(player._id.toString());
-      return {
-        _id: player._id,
-        name: player.name,
-        careerAverages: pStats || null,
-      };
-    });
-
-    const initialProfiles = generatePlayerProfiles(playersWithStats);
-
-    // 4. Obtener recomendaciones (plural)
-    const { recommendations, allProfiles } = recommendLineups(
-      initialProfiles,
-      situation,
-    );
+      {
+        id: "mock-rec-2",
+        title: "Quinteto ofensivo",
+        description:
+          "Opción para aumentar ritmo de anotación y generación de ventajas.",
+        lineup: [...playerIds].reverse().slice(0, 5),
+        fitScore: 88,
+        tags: ["ofensiva", "ritmo", "creación"],
+        source: "mock",
+      },
+      {
+        id: "mock-rec-3",
+        title: "Quinteto de cierre",
+        description:
+          "Alternativa conservadora para momentos de control y ejecución.",
+        lineup: playerIds.slice(0, 5),
+        fitScore: 85,
+        tags: ["cierre", "control", "experiencia"],
+        source: "mock",
+      },
+    ];
 
     return NextResponse.json(
-      { success: true, data: { recommendations, allProfiles } },
+      {
+        success: true,
+        data: {
+          recommendations,
+          allProfiles,
+        },
+      },
       { status: 200 },
     );
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : 'Error desconocido';
+      error instanceof Error ? error.message : "Error desconocido";
+
     return NextResponse.json(
-      { success: false, message: 'Error en el servidor', error: errorMessage },
+      {
+        success: false,
+        message: "Error en el servidor",
+        error: errorMessage,
+      },
       { status: 500 },
     );
   }
