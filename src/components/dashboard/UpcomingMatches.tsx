@@ -1,5 +1,21 @@
 'use client';
 
+/**
+ * ============================================================
+ * UPCOMING MATCHES — Dark System
+ * ============================================================
+ *
+ * NOTAS PARA PABLITO
+ * ------------------
+ * Por ahora mantiene datos mock para la home del dashboard.
+ * Se rehace la UI para integrarse al sistema dark.
+ *
+ * Futuro:
+ * - conectar a endpoint real de fixtures / calendario
+ * - agregar estado del partido
+ * - mostrar escudo rival y prioridad competitiva
+ */
+
 import {
   CalendarDaysIcon,
   ClockIcon,
@@ -7,7 +23,6 @@ import {
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 
-// Datos estáticos/mock de muestra para la vista previa del dashboard
 const mockUpcomingMatches = [
   {
     id: '1',
@@ -38,62 +53,62 @@ const mockUpcomingMatches = [
 export default function UpcomingMatches() {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-50 flex items-center gap-2">
-          <CalendarDaysIcon className="h-6 w-6 text-orange-500" />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="flex items-center gap-2 text-xl font-bold text-white">
+          <CalendarDaysIcon className="h-6 w-6 text-orange-400" />
           Próximas 3 Fechas
         </h2>
+
         <Link
           href="/panel/seasons"
-          className="text-sm font-medium text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 transition-colors"
+          className="text-sm font-medium text-orange-300 transition hover:text-orange-200"
         >
           Ver todo (Próximamente) &rarr;
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {mockUpcomingMatches.map((match) => (
           <div
             key={match.id}
-            className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group"
+            className="group relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] p-5 shadow-[0_16px_36px_rgba(0,0,0,0.20)] transition-all duration-300 hover:-translate-y-1 hover:border-orange-400/25"
           >
-            {/* Banner superior indicando local/visitante */}
             <div
-              className={`absolute top-0 left-0 w-1 h-full ${match.isHome ? 'bg-orange-500' : 'bg-gray-400'}`}
-            ></div>
+              className={`absolute left-0 top-0 h-full w-1 ${
+                match.isHome ? 'bg-orange-500' : 'bg-slate-500'
+              }`}
+            />
 
-            <div className="flex justify-between items-start mb-3 pl-2">
-              <div>
-                <span className="inline-flex items-center rounded-md bg-gray-50 dark:bg-gray-700 px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 ring-1 ring-inset ring-gray-500/10">
+            <div className="ml-2">
+              <div className="flex items-start justify-between gap-3">
+                <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs font-medium text-white/70">
                   {match.isHome ? 'Local' : 'Visitante'}
                 </span>
               </div>
-            </div>
 
-            <div className="pl-2 space-y-3">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-                  vs
+              <div className="mt-5">
+                <p className="text-xs uppercase tracking-[0.18em] text-white/35">
+                  VS
                 </p>
                 <h3
-                  className="text-xl font-bold text-gray-900 dark:text-white truncate"
+                  className="mt-2 truncate text-2xl font-bold text-white"
                   title={match.opponent}
                 >
                   {match.opponent}
                 </h3>
               </div>
 
-              <div className="space-y-1.5 pt-2 border-t border-gray-100 dark:border-gray-700">
-                <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                  <CalendarDaysIcon className="h-4 w-4 mr-2 text-gray-400" />
+              <div className="mt-5 space-y-3 border-t border-white/8 pt-4">
+                <div className="flex items-center text-sm text-white/65">
+                  <CalendarDaysIcon className="mr-2 h-4 w-4 text-white/35" />
                   {match.date}
                 </div>
-                <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                  <ClockIcon className="h-4 w-4 mr-2 text-gray-400" />
+                <div className="flex items-center text-sm text-white/65">
+                  <ClockIcon className="mr-2 h-4 w-4 text-white/35" />
                   {match.time}
                 </div>
-                <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                  <MapPinIcon className="h-4 w-4 mr-2 text-gray-400" />
+                <div className="flex items-center text-sm text-white/65">
+                  <MapPinIcon className="mr-2 h-4 w-4 text-white/35" />
                   <span className="truncate" title={match.location}>
                     {match.location}
                   </span>
@@ -101,8 +116,7 @@ export default function UpcomingMatches() {
               </div>
             </div>
 
-            {/* Elemento decorativo sutil en el fondo que indica que esto es mock/preview */}
-            <div className="absolute -bottom-2 -right-2 text-gray-100 dark:text-gray-800 opacity-50 z-0 pointer-events-none transform -rotate-12 group-hover:scale-110 transition-transform">
+            <div className="pointer-events-none absolute -bottom-3 -right-3 text-white/[0.04] transition-transform duration-300 group-hover:scale-110">
               <CalendarDaysIcon className="h-24 w-24" />
             </div>
           </div>
