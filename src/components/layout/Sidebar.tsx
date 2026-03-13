@@ -7,25 +7,25 @@
  *
  * NOTAS PARA PABLITO (ESTRUCTURA / FUTURA EVOLUCIÓN)
  * -------------------------------------------------
- * Objetivo de este archivo:
- * - Unificar la identidad visual del panel con el dashboard
- * - Pasar de un sidebar claro/administrativo a uno premium/dark
- * - Mantener navegación simple sin meter lógica compleja
+ * Objetivo:
+ * - Unificar la identidad visual del panel con el dashboard dark
+ * - Mantener compatibilidad con el layout actual del panel
  *
- * Qué se puede hacer después:
- * - Conectar badges dinámicos por equipo
- * - Mostrar nombre/logo real del club
- * - Agregar estados live, alertas o sesiones activas
- * - Permitir colapsado real en desktop
+ * Props que hoy recibe desde /src/app/panel/layout.tsx:
+ * - user
+ * - isSidebarOpen
+ * - handleLogout
  *
- * Importante:
- * - Si la app ya tiene rutas distintas, ajustar solo el array NAV_ITEMS
- * - Si el logout real hoy usa otra lógica, reemplazar temporalmente el href
- *   o reconectar el botón con el flujo real
+ * Futuro:
+ * - usar logo/equipo real
+ * - badges dinámicos
+ * - colapsado real con solo iconos
+ * - estados live
  */
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import type { AuthUser } from '@/hooks/useAuth';
 import {
   LayoutDashboard,
   Users,
@@ -44,6 +44,12 @@ type NavItem = {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
+};
+
+type SidebarProps = {
+  user: AuthUser | null;
+  isSidebarOpen: boolean;
+  handleLogout: () => Promise<void> | void;
 };
 
 const NAV_ITEMS: NavItem[] = [
@@ -80,58 +86,95 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({
+  user,
+  isSidebarOpen,
+  handleLogout,
+}: SidebarProps) {
   const pathname = usePathname();
 
+  const teamName = user?.team?.name || 'Dev Team';
+
   return (
-    <aside className="flex h-full w-[290px] flex-col border-r border-white/10 bg-[#07101d] text-white">
+    <aside
+      className={[
+        'flex h-full flex-col border-r border-white/10 bg-[#07101d] text-white transition-all duration-300',
+        isSidebarOpen ? 'w-[290px]' : 'w-[92px]',
+      ].join(' ')}
+    >
       {/* Brand */}
-      <div className="border-b border-white/10 px-5 py-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-500/12 ring-1 ring-orange-400/20">
+      <div className="border-b border-white/10 px-4 py-5">
+        <div
+          className={[
+            'flex items-center',
+            isSidebarOpen ? 'gap-3' : 'justify-center',
+          ].join(' ')}
+        >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/12 ring-1 ring-orange-400/20">
             <Orbit className="h-5 w-5 text-orange-400" />
           </div>
 
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-white/35">
-              Control Room
-            </p>
-            <h1 className="text-[1.75rem] font-bold tracking-tight">
-              <span className="text-white">Basket</span>
-              <span className="text-orange-500">-Metrics</span>
-            </h1>
-          </div>
+          {isSidebarOpen ? (
+            <div className="min-w-0">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-white/35">
+                Control Room
+              </p>
+              <h1 className="truncate text-[1.75rem] font-bold tracking-tight">
+                <span className="text-white">Basket</span>
+                <span className="text-orange-500">-Metrics</span>
+              </h1>
+            </div>
+          ) : null}
         </div>
       </div>
 
-      {/* Team mini block */}
-      <div className="px-5 pt-5">
-        <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
-            Team workspace
-          </p>
-          <div className="mt-3 flex items-center justify-between gap-3">
+      {/* Team block */}
+      <div className="px-4 pt-5">
+        <div
+          className={[
+            'rounded-3xl border border-white/10 bg-white/[0.04] p-4',
+            !isSidebarOpen && 'flex items-center justify-center px-2 py-3',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          {isSidebarOpen ? (
             <div>
-              <p className="text-sm font-semibold text-white">Dev Team</p>
-              <p className="mt-1 text-xs text-white/45">
-                Plataforma deportiva activa
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+                Team workspace
               </p>
-            </div>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-white">
+                    {teamName}
+                  </p>
+                  <p className="mt-1 text-xs text-white/45">
+                    Plataforma deportiva activa
+                  </p>
+                </div>
 
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-orange-500/12 ring-1 ring-orange-400/15">
+                  <Sparkles className="h-4 w-4 text-orange-300" />
+                </div>
+              </div>
+            </div>
+          ) : (
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500/12 ring-1 ring-orange-400/15">
               <Sparkles className="h-4 w-4 text-orange-300" />
             </div>
-          </div>
+          )}
         </div>
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 px-4 py-5">
-        <div className="mb-3 px-2">
-          <p className="text-[10px] uppercase tracking-[0.22em] text-white/30">
-            Navigation
-          </p>
-        </div>
+      <div className="flex-1 px-3 py-5">
+        {isSidebarOpen ? (
+          <div className="mb-3 px-2">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-white/30">
+              Navigation
+            </p>
+          </div>
+        ) : null}
 
         <nav className="space-y-2">
           {NAV_ITEMS.map((item) => {
@@ -143,14 +186,23 @@ export default function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                title={item.label}
                 className={[
-                  'group flex items-center justify-between rounded-2xl border px-4 py-3 transition-all duration-200',
+                  'group flex items-center rounded-2xl border transition-all duration-200',
+                  isSidebarOpen
+                    ? 'justify-between px-4 py-3'
+                    : 'justify-center px-2 py-3',
                   isActive
                     ? 'border-orange-400/25 bg-orange-500/12 shadow-[0_10px_30px_rgba(249,115,22,0.12)]'
                     : 'border-transparent bg-transparent hover:border-white/10 hover:bg-white/[0.04]',
                 ].join(' ')}
               >
-                <div className="flex items-center gap-3">
+                <div
+                  className={[
+                    'flex items-center',
+                    isSidebarOpen ? 'gap-3' : 'justify-center',
+                  ].join(' ')}
+                >
                   <div
                     className={[
                       'flex h-11 w-11 items-center justify-center rounded-2xl transition',
@@ -169,32 +221,36 @@ export default function Sidebar() {
                     />
                   </div>
 
-                  <div className="flex flex-col">
-                    <span
-                      className={[
-                        'text-sm font-medium transition',
-                        isActive ? 'text-white' : 'text-white/78',
-                      ].join(' ')}
-                    >
-                      {item.label}
-                    </span>
-
-                    {item.badge ? (
-                      <span className="mt-0.5 text-[10px] uppercase tracking-[0.18em] text-orange-300/70">
-                        {item.badge}
+                  {isSidebarOpen ? (
+                    <div className="flex min-w-0 flex-col">
+                      <span
+                        className={[
+                          'truncate text-sm font-medium transition',
+                          isActive ? 'text-white' : 'text-white/78',
+                        ].join(' ')}
+                      >
+                        {item.label}
                       </span>
-                    ) : null}
-                  </div>
+
+                      {item.badge ? (
+                        <span className="mt-0.5 text-[10px] uppercase tracking-[0.18em] text-orange-300/70">
+                          {item.badge}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
 
-                <ChevronRight
-                  className={[
-                    'h-4 w-4 transition',
-                    isActive
-                      ? 'text-orange-300'
-                      : 'text-white/25 group-hover:text-white/55',
-                  ].join(' ')}
-                />
+                {isSidebarOpen ? (
+                  <ChevronRight
+                    className={[
+                      'h-4 w-4 transition',
+                      isActive
+                        ? 'text-orange-300'
+                        : 'text-white/25 group-hover:text-white/55',
+                    ].join(' ')}
+                  />
+                ) : null}
               </Link>
             );
           })}
@@ -205,33 +261,59 @@ export default function Sidebar() {
         <div className="space-y-2">
           <Link
             href="/panel/help"
-            className="group flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-white/75 transition hover:border-white/10 hover:bg-white/[0.04] hover:text-white"
+            title="Ayuda"
+            className={[
+              'group flex items-center rounded-2xl border border-transparent text-white/75 transition hover:border-white/10 hover:bg-white/[0.04] hover:text-white',
+              isSidebarOpen ? 'gap-3 px-4 py-3' : 'justify-center px-2 py-3',
+            ].join(' ')}
           >
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/[0.04] ring-1 ring-white/5">
               <CircleHelp className="h-5 w-5" />
             </div>
-            <span className="text-sm font-medium">Ayuda</span>
+            {isSidebarOpen ? (
+              <span className="text-sm font-medium">Ayuda</span>
+            ) : null}
           </Link>
 
-          <Link
-            href="/login"
-            className="group flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-white/75 transition hover:border-red-400/15 hover:bg-red-500/[0.07] hover:text-white"
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            title="Cerrar sesión"
+            className={[
+              'group flex w-full items-center rounded-2xl border border-transparent text-white/75 transition hover:border-red-400/15 hover:bg-red-500/[0.07] hover:text-white',
+              isSidebarOpen ? 'gap-3 px-4 py-3' : 'justify-center px-2 py-3',
+            ].join(' ')}
           >
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/[0.04] ring-1 ring-white/5 group-hover:bg-red-500/[0.10]">
               <LogOut className="h-5 w-5 group-hover:text-red-300" />
             </div>
-            <span className="text-sm font-medium">Cerrar sesión</span>
-          </Link>
+            {isSidebarOpen ? (
+              <span className="text-sm font-medium">Cerrar sesión</span>
+            ) : null}
+          </button>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="border-t border-white/10 px-5 py-4">
-        <div className="rounded-2xl bg-white/[0.03] px-4 py-3">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-white/30">
-            Version
-          </p>
-          <p className="mt-1 text-sm text-white/55">Basket Metrics 0.9</p>
+      <div className="border-t border-white/10 px-4 py-4">
+        <div
+          className={[
+            'rounded-2xl bg-white/[0.03] px-4 py-3',
+            !isSidebarOpen && 'flex items-center justify-center px-2',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          {isSidebarOpen ? (
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/30">
+                Version
+              </p>
+              <p className="mt-1 text-sm text-white/55">Basket Metrics 0.9</p>
+            </div>
+          ) : (
+            <span className="text-xs text-white/40">v0.9</span>
+          )}
         </div>
       </div>
     </aside>
