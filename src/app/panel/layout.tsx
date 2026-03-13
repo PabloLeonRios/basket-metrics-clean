@@ -1,18 +1,45 @@
-// src/app/panel/layout.tsx
 'use client';
+
+/**
+ * ============================================================
+ * PANEL LAYOUT — Basket Metrics / Unified Dark System
+ * ============================================================
+ *
+ * NOTAS PARA PABLITO
+ * ------------------
+ * Este layout unifica visualmente todo el panel:
+ * - fondo general dark
+ * - topbar dark
+ * - sidebar dark
+ * - área de contenido coherente con dashboard/components
+ *
+ * Objetivo:
+ * - evitar mezcla "sidebar dark + topbar blanca + content gris"
+ * - sostener una identidad sport-tech premium
+ *
+ * Se mantiene:
+ * - useAuth()
+ * - redirección a /login
+ * - handleLogout()
+ * - Sidebar con props:
+ *   user / isSidebarOpen / handleLogout
+ *
+ * Futuro:
+ * - conectar badge de equipo real
+ * - guardar estado colapsado del sidebar por usuario
+ * - sumar quick profile / notifications
+ */
 
 import { useEffect, PropsWithChildren, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import Sidebar from '@/components/layout/Sidebar';
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'; // For sidebar toggle icon
-import { Dribbble } from 'lucide-react';
+import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 
 export default function PanelLayout({ children }: PropsWithChildren) {
   const { user, loading, isAuthenticated } = useAuth();
   const router = useRouter();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Sidebar is open by default
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -32,60 +59,56 @@ export default function PanelLayout({ children }: PropsWithChildren) {
 
   if (loading || !isAuthenticated) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
-        Cargando...
+      <div className="flex min-h-screen items-center justify-center bg-[#050b14] text-white">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-orange-500" />
+          <span className="text-sm text-white/70">Cargando panel...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-950 flex relative">
-      {/* Sidebar Backdrop for Mobile */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-gray-900/80 z-40 md:hidden transition-opacity"
+    <div className="min-h-screen bg-[#050b14] text-white">
+      {/* Mobile backdrop */}
+      {isSidebarOpen ? (
+        <button
+          type="button"
+          aria-label="Cerrar menú"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] md:hidden"
           onClick={() => setIsSidebarOpen(false)}
-          aria-hidden="true"
         />
-      )}
+      ) : null}
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 md:sticky md:top-0 h-screen bg-white dark:bg-gray-900 shadow-md transition-all duration-300 ease-in-out flex-shrink-0 ${
-          isSidebarOpen
-            ? 'w-64 translate-x-0'
-            : 'w-0 -translate-x-full md:translate-x-0 md:w-0 overflow-hidden'
-        }`}
+      {/* Sidebar wrapper */}
+      <div
+        className={[
+          'fixed inset-y-0 left-0 z-50 transition-transform duration-300 md:translate-x-0',
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+        ].join(' ')}
       >
-        <div className="h-16 flex items-center justify-center border-b border-gray-200 dark:border-gray-800 px-4 min-w-[16rem]">
-          <Link
-            href="/panel"
-            className="flex items-center gap-2 font-bold text-xl text-orange-600"
-          >
-            <Dribbble className="w-6 h-6 text-orange-500" />
-            <span>Basket-Metrics</span>
-          </Link>
-        </div>
         <Sidebar
           user={user}
           isSidebarOpen={isSidebarOpen}
           handleLogout={handleLogout}
         />
-      </aside>
+      </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Top Header */}
-        <header className="bg-white dark:bg-gray-900 shadow-sm sticky top-0 z-40">
-          <div className="mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex h-16 items-center justify-between">
-              {' '}
-              {/* Changed to justify-between */}
-              {/* Sidebar Toggle Button */}
+      {/* Main shell */}
+      <div
+        className={[
+          'min-h-screen transition-[padding] duration-300',
+          isSidebarOpen ? 'md:pl-[290px]' : 'md:pl-[92px]',
+        ].join(' ')}
+      >
+        {/* Topbar */}
+        <header className="sticky top-0 z-30 border-b border-white/10 bg-[#07101d]/90 backdrop-blur-xl">
+          <div className="flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3">
               <button
                 type="button"
-                className="-ml-2 flex h-10 w-10 items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-orange-500 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/[0.08] hover:text-white"
+                onClick={() => setIsSidebarOpen((prev) => !prev)}
               >
                 <span className="sr-only">Toggle sidebar</span>
                 {isSidebarOpen ? (
@@ -94,33 +117,44 @@ export default function PanelLayout({ children }: PropsWithChildren) {
                   <Bars3Icon className="h-6 w-6" aria-hidden="true" />
                 )}
               </button>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-base font-semibold text-gray-700 dark:text-gray-300">
-                    {' '}
-                    {/* Increased font size */}
-                    Hola, {user?.name}
-                  </span>
-                  {user?.role === 'entrenador' && user.team && (
-                    <span className="px-2.5 py-0.5 bg-orange-100 text-orange-800 text-base font-semibold rounded-full dark:bg-orange-900 dark:text-orange-200 shadow-sm flex items-center gap-2">
-                      {user.team.logoUrl && (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={user.team.logoUrl}
-                          alt={`Logo ${user.team.name}`}
-                          className="h-6 w-6 rounded-full object-cover"
-                        />
-                      )}
-                      {user.team.name}
-                    </span>
-                  )}
-                </div>
+
+              <div className="hidden sm:block">
+                <p className="text-[10px] uppercase tracking-[0.22em] text-white/35">
+                  Basket Metrics
+                </p>
+                <p className="text-sm text-white/65">Game Control Workspace</p>
               </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="hidden text-right sm:block">
+                <p className="text-sm text-white/45">Sesión iniciada</p>
+                <p className="text-lg font-semibold text-white">
+                  Hola, {user?.name}
+                </p>
+              </div>
+
+              {user?.role === 'entrenador' && user.team ? (
+                <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/15 bg-orange-500/12 px-3 py-2 text-sm font-semibold text-orange-200 shadow-[0_8px_24px_rgba(249,115,22,0.15)]">
+                  {user.team.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={user.team.logoUrl}
+                      alt={`Logo ${user.team.name}`}
+                      className="h-7 w-7 rounded-full object-cover ring-1 ring-white/10"
+                    />
+                  ) : null}
+                  <span className="max-w-[140px] truncate">{user.team.name}</span>
+                </div>
+              ) : null}
             </div>
           </div>
         </header>
-        {/* Page Content */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
+
+        {/* Content */}
+        <main className="min-h-[calc(100vh-80px)] bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.08),transparent_20%),linear-gradient(180deg,#050b14_0%,#07101d_100%)] px-4 py-6 sm:px-6 lg:px-8">
+          {children}
+        </main>
       </div>
     </div>
   );
