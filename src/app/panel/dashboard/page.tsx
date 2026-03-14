@@ -272,9 +272,9 @@ export default function DashboardPage() {
   return (
     <div className="space-y-4">
       <section
-        className={`${shellClassName()} overflow-hidden px-8 py-5 md:px-10 md:py-6`}
+        className={`${shellClassName()} overflow-hidden px-8 py-4 md:px-10 md:py-4`}
       >
-        <div className="grid gap-6 xl:grid-cols-[1.62fr_0.38fr]">
+        <div className="grid gap-4 xl:grid-cols-[1.62fr_0.38fr]">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-orange-300">
               Basket Metrics para clubes
