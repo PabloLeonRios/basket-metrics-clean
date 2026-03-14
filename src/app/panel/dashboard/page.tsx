@@ -13,9 +13,11 @@
  * - jugadores
  * - sesiones
  * - métricas básicas
+ * - última sesión (mock)
+ * - próximo partido (mock)
  *
  * Origen actual:
- * - stores locales
+ * - stores locales / mocks visuales
  *
  * Migración futura:
  *
@@ -26,16 +28,34 @@
  * {
  *   players: number
  *   sessions: number
- *   lastSessionDate: string
  *   activePlayers: number
+ *   lastSession: {
+ *     id: string
+ *     title: string
+ *     date: string
+ *     type: string
+ *   }
+ *   nextMatch: {
+ *     id: string
+ *     rival: string
+ *     date: string
+ *     location: string
+ *     isHome: boolean
+ *   }
  * }
  *
  * Luego estos datos reemplazarán los valores mock.
- *
  */
 
 import Link from "next/link";
-import { Users, Activity, ClipboardList, ArrowRight } from "lucide-react";
+import {
+  Users,
+  Activity,
+  ClipboardList,
+  ArrowRight,
+  CalendarDays,
+  MapPinned,
+} from "lucide-react";
 
 function shellClassName() {
   return "rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1624] to-[#070e18]";
@@ -51,7 +71,7 @@ function KpiCard({
   title: string;
   value: string;
   helper: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   href: string;
 }) {
   return (
@@ -78,6 +98,43 @@ function KpiCard({
   );
 }
 
+function InfoCard({
+  eyebrow,
+  title,
+  description,
+  href,
+  footer,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  href: string;
+  footer: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group block rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-orange-400/30 hover:bg-white/[0.05]"
+    >
+      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+        {eyebrow}
+      </p>
+
+      <h3 className="mt-3 text-2xl font-bold text-white">{title}</h3>
+
+      <p className="mt-3 text-sm leading-7 text-slate-400">{description}</p>
+
+      <div className="mt-6 flex items-center justify-between">
+        <span className="text-sm text-slate-300">{footer}</span>
+        <span className="inline-flex items-center gap-2 text-sm font-medium text-orange-300">
+          Abrir
+          <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+        </span>
+      </div>
+    </Link>
+  );
+}
+
 export default function DashboardPage() {
   const panelStats = {
     players: 12,
@@ -85,10 +142,22 @@ export default function DashboardPage() {
     activePlayers: 10,
   };
 
+  const lastSession = {
+    title: "Entrenamiento técnico",
+    date: "Ayer · 19:00",
+    type: "Sesión cargada recientemente",
+  };
+
+  const nextMatch = {
+    rival: "Águilas BC",
+    date: "Viernes · 20:00",
+    location: "Pabellón Principal",
+    isHome: true,
+  };
+
   return (
     <div className="space-y-10">
       {/* HERO */}
-
       <section className={`${shellClassName()} overflow-hidden p-8 md:p-10`}>
         <div className="grid gap-10 xl:grid-cols-[1.35fr_0.65fr]">
           <div>
@@ -156,7 +225,6 @@ export default function DashboardPage() {
       </section>
 
       {/* KPIS */}
-
       <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         <KpiCard
           title="Jugadores registrados"
@@ -181,6 +249,55 @@ export default function DashboardPage() {
           icon={Activity}
           href="/panel/players"
         />
+      </section>
+
+      {/* BLOQUES ÚTILES */}
+      <section className="grid gap-6 xl:grid-cols-2">
+        <InfoCard
+          eyebrow="Última sesión"
+          title={lastSession.title}
+          description="Accedé rápido al último registro cargado y continuá el seguimiento del equipo sin perder tiempo."
+          href="/panel/sessions"
+          footer={`${lastSession.date} · ${lastSession.type}`}
+        />
+
+        <Link
+          href="/panel/sessions"
+          className="group block rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-orange-400/30 hover:bg-white/[0.05]"
+        >
+          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+            Próximo partido
+          </p>
+
+          <h3 className="mt-3 text-2xl font-bold text-white">
+            vs {nextMatch.rival}
+          </h3>
+
+          <p className="mt-3 text-sm leading-7 text-slate-400">
+            Visualizá el próximo compromiso del club y seguí la planificación deportiva.
+          </p>
+
+          <div className="mt-6 space-y-3 text-sm text-slate-300">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-orange-400" />
+              <span>{nextMatch.date}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <MapPinned className="h-4 w-4 text-orange-400" />
+              <span>{nextMatch.location}</span>
+            </div>
+
+            <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-medium text-slate-300">
+              {nextMatch.isHome ? "Local" : "Visitante"}
+            </div>
+          </div>
+
+          <div className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-orange-300">
+            Ver detalle
+            <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+          </div>
+        </Link>
       </section>
     </div>
   );
