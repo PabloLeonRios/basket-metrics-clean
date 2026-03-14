@@ -2,18 +2,20 @@
 
 /**
  * ============================================================
- * BASKET METRICS — DASHBOARD CLUBS V1
+ * BASKET METRICS — PANEL PRINCIPAL CLUBES
  * ============================================================
  *
  * MENSAJE PARA PABLITO
  * --------------------
- * Este archivo reemplaza por completo la home del dashboard del panel.
+ * Este archivo redefine la home del panel con foco en:
+ * - clubes
+ * - staff técnico
+ * - percepción de plataforma de análisis deportivo
  *
- * Objetivo de esta versión:
- * - dejar de mezclar estilos viejos y nuevos
- * - dar una dirección de producto más vendible para clubes
- * - priorizar percepción de plataforma de análisis deportivo
- * - NO depender de TopPlayers / UpcomingMatches viejos
+ * Objetivo:
+ * - mantener la dirección visual dark sport-tech
+ * - sacar títulos en inglés innecesarios
+ * - mejorar la claridad comercial del producto
  *
  * Qué usa real:
  * - useAuth()
@@ -24,14 +26,14 @@
  *
  * Qué queda visual/mock por ahora:
  * - gráfico de rendimiento reciente
- * - bloque "Shot Chart Center"
- * - fixtures próximos
+ * - bloque "Mapa de tiros"
+ * - próximos partidos
  *
- * Importante:
- * - esta versión está pensada como "north star visual"
- * - el siguiente paso correcto sería unificar layout + players + sessions
- * - si más adelante migramos a Mongo/backend nuevo, este dashboard ya queda
- *   preparado para conectar KPIs y fixtures reales sin rehacer estructura
+ * Futuro backend:
+ * - conectar KPIs reales del club
+ * - conectar histórico real de rendimiento
+ * - conectar agenda/fixtures reales
+ * - conectar shot chart del último partido o sesión
  */
 
 import Link from 'next/link';
@@ -39,7 +41,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import {
   ArrowRight,
-  BarChart3,
   BrainCircuit,
   CalendarDays,
   ChevronRight,
@@ -105,11 +106,11 @@ const mockFixtures: Fixture[] = [
 ];
 
 const mockTrend = [
-  { label: 'G1', value: 68 },
-  { label: 'G2', value: 74 },
-  { label: 'G3', value: 81 },
-  { label: 'G4', value: 77 },
-  { label: 'G5', value: 85 },
+  { label: 'J1', value: 68 },
+  { label: 'J2', value: 74 },
+  { label: 'J3', value: 81 },
+  { label: 'J4', value: 77 },
+  { label: 'J5', value: 85 },
 ];
 
 function shellClassName() {
@@ -243,9 +244,7 @@ function TopPlayerCard({
 
 function FixtureCard({ fixture }: { fixture: Fixture }) {
   return (
-    <div
-      className={`${shellClassName()} relative overflow-hidden p-5`}
-    >
+    <div className={`${shellClassName()} relative overflow-hidden p-5`}>
       <div
         className={`absolute left-0 top-0 h-full w-1 ${
           fixture.isHome ? 'bg-orange-500' : 'bg-slate-500'
@@ -337,10 +336,10 @@ function ShotChartCenter() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
-            Shot Chart Center
+            Mapa de tiros
           </p>
           <h3 className="mt-2 text-2xl font-bold text-white">
-            Mapa de tiros del club
+            Centro de análisis de tiro
           </h3>
           <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-400">
             Este bloque está pensado para convertirse en el diferencial visual del
@@ -389,7 +388,7 @@ function ShotChartCenter() {
         <div className="grid gap-4">
           <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
             <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-              Enfoque visual
+              Foco visual
             </p>
             <h4 className="mt-2 text-xl font-semibold text-white">
               La cancha tiene que ser protagonista
@@ -413,11 +412,11 @@ function ShotChartCenter() {
 
             <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
               <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                Feature wow
+                Diferencial
               </p>
               <p className="mt-3 text-3xl font-bold text-white">Sí</p>
               <p className="mt-2 text-sm text-slate-400">
-                Esto vende el producto.
+                Este bloque vende el producto.
               </p>
             </div>
           </div>
@@ -434,7 +433,7 @@ function ShotChartCenter() {
                 </h5>
                 <p className="mt-2 text-sm leading-7 text-slate-400">
                   Conectar este centro a la última sesión registrada para mostrar
-                  tiros convertidos/fallados y filtros por jugador o equipo.
+                  tiros convertidos, fallados y filtros por jugador o equipo.
                 </p>
               </div>
             </div>
@@ -519,7 +518,7 @@ export default function DashboardPage() {
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-orange-500" />
-          <span className="text-sm text-slate-400">Cargando dashboard...</span>
+          <span className="text-sm text-slate-400">Cargando panel...</span>
         </div>
       </div>
     );
@@ -588,10 +587,10 @@ export default function DashboardPage() {
           <div className="grid gap-4">
             <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
               <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                Team focus
+                Foco del equipo
               </p>
               <h3 className="mt-2 text-2xl font-bold text-white">
-                Staff-oriented dashboard
+                Panel orientado al staff
               </h3>
               <p className="mt-2 text-sm leading-7 text-slate-400">
                 La intención es mostrar rápido qué mirar, a quién seguir y dónde
@@ -602,16 +601,16 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                  Club mode
+                  Modo club
                 </p>
-                <p className="mt-3 text-3xl font-bold text-white">On</p>
+                <p className="mt-3 text-3xl font-bold text-white">Activo</p>
               </div>
 
               <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                  Analytics ready
+                  Listo para análisis
                 </p>
-                <p className="mt-3 text-3xl font-bold text-white">Yes</p>
+                <p className="mt-3 text-3xl font-bold text-white">Sí</p>
               </div>
             </div>
           </div>
@@ -635,14 +634,14 @@ export default function DashboardPage() {
         />
 
         <KpiCard
-          title="Top VAL"
+          title="Mejor VAL"
           value={topPlayerValue}
           helper="Mejor promedio actual entre jugadores destacados."
           icon={Trophy}
         />
 
         <KpiCard
-          title="IA"
+          title="Asistente IA"
           value="Lista"
           helper="Asistente preparado para escenarios y sugerencias."
           icon={BrainCircuit}
@@ -657,10 +656,10 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
-                Top jugadores
+                Jugadores destacados
               </p>
               <h3 className="mt-2 text-2xl font-bold text-white">
-                Rendimiento destacado
+                Rendimiento individual
               </h3>
               <p className="mt-2 text-sm text-slate-400">
                 Los jugadores con mejor valoración promedio.
@@ -698,10 +697,10 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* SHOT CHART */}
+      {/* MAPA DE TIROS */}
       <ShotChartCenter />
 
-      {/* QUICK MODULES */}
+      {/* MÓDULOS */}
       <section>
         <div className="mb-5">
           <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
@@ -734,7 +733,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* FIXTURES */}
+      {/* PARTIDOS */}
       <section className={`${shellClassName()} p-6`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
