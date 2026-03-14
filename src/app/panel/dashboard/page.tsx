@@ -249,32 +249,17 @@ export default function DashboardPage() {
   };
 
   const topPlayers = [
-    {
-      id: "1",
-      name: "Juan Pérez",
-      number: 23,
-      efficiency: 12,
-    },
-    {
-      id: "2",
-      name: "Lucas Díaz",
-      number: 7,
-      efficiency: 9,
-    },
-    {
-      id: "3",
-      name: "Martín Gómez",
-      number: 11,
-      efficiency: 8,
-    },
+    { id: "1", name: "Juan Pérez", number: 23, efficiency: 12 },
+    { id: "2", name: "Lucas Díaz", number: 7, efficiency: 9 },
+    { id: "3", name: "Martín Gómez", number: 11, efficiency: 8 },
   ];
 
   return (
     <div className="space-y-4">
       <section
-        className={`${shellClassName()} overflow-hidden px-8 py-4 md:px-10 md:py-4`}
+        className={`${shellClassName()} overflow-hidden px-8 py-3 md:px-10 md:py-4`}
       >
-        <div className="grid gap-4 xl:grid-cols-[1.62fr_0.38fr]">
+        <div className="grid gap-4 xl:grid-cols-[1.72fr_0.28fr]">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-orange-300">
               Basket Metrics para clubes
@@ -290,7 +275,7 @@ export default function DashboardPage() {
               en datos.
             </p>
 
-            <div className="mt-5 flex flex-wrap gap-3">
+            <div className="mt-4 flex flex-wrap gap-3">
               <Link
                 href="/panel/players"
                 className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-400"
@@ -313,13 +298,9 @@ export default function DashboardPage() {
               Panel principal
             </p>
 
-            <h3 className="mt-2 text-xl font-bold text-white">
+            <h3 className="mt-2 text-lg font-bold text-white">
               Control del rendimiento
             </h3>
-
-            <p className="mt-2 text-sm leading-7 text-slate-400">
-              Acceso rápido a los módulos principales del club.
-            </p>
 
             <div className="mt-4 space-y-2.5">
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
