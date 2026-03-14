@@ -2,38 +2,41 @@
 
 /**
  * ============================================================
- * BASKET METRICS — PANEL PRINCIPAL CLUBES
+ * BASKET METRICS — PANEL PRINCIPAL CLUBES (VERSIÓN MINIMAL)
  * ============================================================
  *
  * MENSAJE PARA PABLITO
  * --------------------
- * Este archivo redefine la home del panel con foco en:
- * - clubes
- * - staff técnico
- * - percepción de plataforma de análisis deportivo
+ * Esta versión simplifica el dashboard para evitar ruido visual.
  *
  * Objetivo:
- * - mantener la dirección visual dark sport-tech
- * - sacar títulos en inglés innecesarios
- * - mejorar la claridad comercial del producto
+ * - dejar la home del panel como base operativa
+ * - mostrar solo lo esencial
+ * - mantener percepción de producto profesional para clubes
  *
- * Qué usa real:
+ * Qué se mantiene:
  * - useAuth()
  * - GET /api/stats/top-players?coachId=
- * - intentos de lectura liviana de:
+ * - conteo liviano de:
  *   /api/players
  *   /api/sessions
  *
- * Qué queda visual/mock por ahora:
- * - gráfico de rendimiento reciente
- * - bloque "Mapa de tiros"
+ * Qué se elimina:
+ * - gráfico de tendencia
+ * - bloque conceptual del mapa de tiros
+ * - exceso de módulos y textos largos
+ *
+ * Qué queda:
+ * - hero compacto
+ * - 4 KPIs
+ * - 3 accesos rápidos
+ * - jugadores destacados
  * - próximos partidos
  *
  * Futuro backend:
- * - conectar KPIs reales del club
- * - conectar histórico real de rendimiento
- * - conectar agenda/fixtures reales
- * - conectar shot chart del último partido o sesión
+ * - conectar fixtures reales
+ * - conectar KPIs reales
+ * - mover mapa de tiros al módulo de análisis o sesión
  */
 
 import Link from 'next/link';
@@ -44,15 +47,12 @@ import {
   BrainCircuit,
   CalendarDays,
   ChevronRight,
-  Dribbble,
-  Gauge,
-  MapPinned,
   Shield,
   Sparkles,
-  Target,
-  TrendingUp,
   Trophy,
   Users,
+  Gauge,
+  MapPinned,
 } from 'lucide-react';
 
 interface TopPlayer {
@@ -105,14 +105,6 @@ const mockFixtures: Fixture[] = [
   },
 ];
 
-const mockTrend = [
-  { label: 'J1', value: 68 },
-  { label: 'J2', value: 74 },
-  { label: 'J3', value: 81 },
-  { label: 'J4', value: 77 },
-  { label: 'J5', value: 85 },
-];
-
 function shellClassName() {
   return 'rounded-[28px] border border-white/10 bg-[#0f172a] shadow-[0_12px_40px_rgba(0,0,0,0.25)]';
 }
@@ -121,31 +113,20 @@ function KpiCard({
   title,
   value,
   helper,
-  icon: Icon,
 }: {
   title: string;
   value: string;
   helper: string;
-  icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
     <div className={`${shellClassName()} p-5`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
-            {title}
-          </p>
-          <p className="mt-3 text-4xl font-bold tracking-tight text-white">
-            {value}
-          </p>
-        </div>
-
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-500/10 ring-1 ring-orange-400/15">
-          <Icon className="h-5 w-5 text-orange-400" />
-        </div>
-      </div>
-
-      <p className="mt-4 text-sm leading-6 text-slate-400">{helper}</p>
+      <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
+        {title}
+      </p>
+      <p className="mt-3 text-4xl font-bold tracking-tight text-white">
+        {value}
+      </p>
+      <p className="mt-3 text-sm leading-6 text-slate-400">{helper}</p>
     </div>
   );
 }
@@ -154,23 +135,17 @@ function QuickCard({
   title,
   description,
   href,
-  icon: Icon,
 }: {
   title: string;
   description: string;
   href: string;
-  icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
     <Link
       href={href}
       className={`${shellClassName()} group block p-5 transition-all duration-200 hover:-translate-y-1 hover:border-orange-400/20 hover:shadow-[0_18px_50px_rgba(249,115,22,0.10)]`}
     >
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/[0.04] ring-1 ring-white/10">
-        <Icon className="h-5 w-5 text-orange-400" />
-      </div>
-
-      <h3 className="mt-5 text-xl font-semibold text-white">{title}</h3>
+      <h3 className="text-xl font-semibold text-white">{title}</h3>
       <p className="mt-2 text-sm leading-7 text-slate-400">{description}</p>
 
       <div className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-orange-300">
@@ -285,165 +260,6 @@ function FixtureCard({ fixture }: { fixture: Fixture }) {
   );
 }
 
-function ChartBars() {
-  const max = Math.max(...mockTrend.map((d) => d.value));
-
-  return (
-    <div className={`${shellClassName()} p-6`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
-            Rendimiento del equipo
-          </p>
-          <h3 className="mt-2 text-2xl font-bold text-white">
-            Tendencia reciente
-          </h3>
-          <p className="mt-2 text-sm text-slate-400">
-            Vista demo de evolución. Después conectamos el histórico real.
-          </p>
-        </div>
-
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/[0.04] ring-1 ring-white/10">
-          <TrendingUp className="h-5 w-5 text-orange-400" />
-        </div>
-      </div>
-
-      <div className="mt-8 grid h-[240px] grid-cols-5 items-end gap-4">
-        {mockTrend.map((item) => {
-          const height = Math.max(18, Math.round((item.value / max) * 180));
-
-          return (
-            <div key={item.label} className="flex flex-col items-center gap-3">
-              <div className="text-sm font-semibold text-white">{item.value}</div>
-              <div
-                className="w-full rounded-t-2xl bg-gradient-to-t from-orange-500 to-orange-300 shadow-[0_8px_20px_rgba(249,115,22,0.25)]"
-                style={{ height }}
-              />
-              <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                {item.label}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function ShotChartCenter() {
-  return (
-    <div className={`${shellClassName()} p-6`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
-            Mapa de tiros
-          </p>
-          <h3 className="mt-2 text-2xl font-bold text-white">
-            Centro de análisis de tiro
-          </h3>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-400">
-            Este bloque está pensado para convertirse en el diferencial visual del
-            producto: lectura rápida de zonas, eficiencia y volumen de tiro.
-          </p>
-        </div>
-
-        <Link
-          href="/panel/sessions"
-          className="inline-flex items-center gap-2 rounded-full border border-orange-400/15 bg-orange-500/10 px-4 py-2 text-sm font-medium text-orange-300 transition hover:bg-orange-500/15"
-        >
-          Ir a sesiones
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
-
-      <div className="mt-8 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="rounded-[24px] border border-white/8 bg-[#0b1220] p-5">
-          <div className="relative flex min-h-[330px] items-center justify-center overflow-hidden rounded-[20px] border border-white/8 bg-[radial-gradient(circle_at_center,rgba(249,115,22,0.08),transparent_45%),linear-gradient(180deg,#101827_0%,#0a101a_100%)]">
-            <svg
-              viewBox="0 0 500 470"
-              className="h-full w-full max-w-[520px]"
-              aria-hidden="true"
-            >
-              <rect x="70" y="40" width="360" height="390" rx="18" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="2" />
-              <path d="M160 40 V160 H340 V40" fill="none" stroke="rgba(255,255,255,0.16)" strokeWidth="2" />
-              <rect x="205" y="40" width="90" height="130" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="2" />
-              <circle cx="250" cy="170" r="38" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="2" />
-              <circle cx="250" cy="85" r="7" fill="rgba(249,115,22,0.95)" />
-              <path d="M90 420 Q250 215 410 420" fill="none" stroke="rgba(249,115,22,0.80)" strokeWidth="4" />
-              <path d="M145 420 Q250 300 355 420" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="2" />
-              <circle cx="210" cy="250" r="6" fill="#f97316" />
-              <circle cx="235" cy="225" r="6" fill="#22c55e" />
-              <circle cx="260" cy="210" r="6" fill="#22c55e" />
-              <circle cx="287" cy="240" r="6" fill="#f97316" />
-              <circle cx="310" cy="280" r="6" fill="#22c55e" />
-              <circle cx="185" cy="300" r="6" fill="#f97316" />
-              <circle cx="340" cy="330" r="6" fill="#22c55e" />
-              <circle cx="145" cy="355" r="6" fill="#f97316" />
-              <circle cx="365" cy="350" r="6" fill="#22c55e" />
-              <circle cx="250" cy="330" r="6" fill="#22c55e" />
-            </svg>
-          </div>
-        </div>
-
-        <div className="grid gap-4">
-          <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-              Foco visual
-            </p>
-            <h4 className="mt-2 text-xl font-semibold text-white">
-              La cancha tiene que ser protagonista
-            </h4>
-            <p className="mt-2 text-sm leading-7 text-slate-400">
-              Cuando este bloque esté conectado al tracker real, el producto deja
-              de parecer un admin y pasa a parecer una plataforma de análisis.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                Zona caliente
-              </p>
-              <p className="mt-3 text-3xl font-bold text-white">45°</p>
-              <p className="mt-2 text-sm text-slate-400">
-                Ideal para destacar eficacia.
-              </p>
-            </div>
-
-            <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                Diferencial
-              </p>
-              <p className="mt-3 text-3xl font-bold text-white">Sí</p>
-              <p className="mt-2 text-sm text-slate-400">
-                Este bloque vende el producto.
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-[24px] border border-orange-400/10 bg-orange-500/5 p-5">
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500/10">
-                <Target className="h-5 w-5 text-orange-400" />
-              </div>
-
-              <div>
-                <h5 className="text-base font-semibold text-white">
-                  Próximo paso ideal
-                </h5>
-                <p className="mt-2 text-sm leading-7 text-slate-400">
-                  Conectar este centro a la última sesión registrada para mostrar
-                  tiros convertidos, fallados y filtros por jugador o equipo.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const [topPlayers, setTopPlayers] = useState<TopPlayer[]>([]);
@@ -540,23 +356,22 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* HERO */}
+      {/* CABECERA */}
       <section className={`${shellClassName()} overflow-hidden p-8 md:p-10`}>
         <div className="grid gap-8 xl:grid-cols-[1.25fr_0.75fr]">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/15 bg-orange-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-orange-300">
-              <Dribbble className="h-4 w-4" />
               Basket Metrics para clubes
             </div>
 
             <h1 className="mt-6 max-w-4xl text-4xl font-bold tracking-tight text-white md:text-6xl">
-              Rendimiento, táctica y lectura del equipo en una sola plataforma.
+              Gestión y análisis del equipo en un solo lugar.
             </h1>
 
             <p className="mt-5 max-w-3xl text-base leading-8 text-slate-400">
               Bienvenido, <span className="font-semibold text-white">{user?.name}</span>.
-              Esta home está pensada para que un club perciba el producto como una
-              herramienta de análisis deportivo, no como un admin genérico.
+              Esta pantalla reúne el estado general del club y te da acceso rápido
+              a los módulos más importantes del sistema.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -574,13 +389,6 @@ export default function DashboardPage() {
               >
                 Gestionar sesiones
               </Link>
-
-              <Link
-                href="/panel/assistant"
-                className="inline-flex items-center gap-2 rounded-2xl border border-cyan-400/15 bg-cyan-500/10 px-5 py-3 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/15"
-              >
-                Abrir IA
-              </Link>
             </div>
           </div>
 
@@ -590,28 +398,12 @@ export default function DashboardPage() {
                 Foco del equipo
               </p>
               <h3 className="mt-2 text-2xl font-bold text-white">
-                Panel orientado al staff
+                Panel principal del club
               </h3>
               <p className="mt-2 text-sm leading-7 text-slate-400">
-                La intención es mostrar rápido qué mirar, a quién seguir y dónde
-                está el valor diferencial del producto.
+                Menos ruido, más lectura rápida: estado general, jugadores clave,
+                agenda y accesos directos.
               </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                  Modo club
-                </p>
-                <p className="mt-3 text-3xl font-bold text-white">Activo</p>
-              </div>
-
-              <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                  Listo para análisis
-                </p>
-                <p className="mt-3 text-3xl font-bold text-white">Sí</p>
-              </div>
             </div>
           </div>
         </div>
@@ -643,15 +435,46 @@ export default function DashboardPage() {
         <KpiCard
           title="Asistente IA"
           value="Lista"
-          helper="Asistente preparado para escenarios y sugerencias."
+          helper="Disponible para consultas y apoyo táctico."
           icon={BrainCircuit}
         />
       </section>
 
-      {/* GRID CENTRAL */}
-      <section className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
-        <ChartBars />
+      {/* ACCESOS RÁPIDOS */}
+      <section>
+        <div className="mb-5">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
+            Accesos rápidos
+          </p>
+          <h2 className="mt-2 text-3xl font-bold text-white">
+            Módulos principales
+          </h2>
+        </div>
 
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <QuickCard
+            title="Jugadores"
+            description="Alta, edición y administración del plantel."
+            href="/panel/players"
+            icon={Users}
+          />
+          <QuickCard
+            title="Sesiones"
+            description="Creación de partidos y entrenamientos."
+            href="/panel/sessions"
+            icon={CalendarDays}
+          />
+          <QuickCard
+            title="Asistente IA"
+            description="Apoyo táctico, sugerencias y análisis."
+            href="/panel/assistant"
+            icon={BrainCircuit}
+          />
+        </div>
+      </section>
+
+      {/* BLOQUES DE VALOR */}
+      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <div className={`${shellClassName()} p-6`}>
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -695,68 +518,31 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-      </section>
 
-      {/* MAPA DE TIROS */}
-      <ShotChartCenter />
+        <div className={`${shellClassName()} p-6`}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
+                Próximos partidos
+              </p>
+              <h2 className="mt-2 text-3xl font-bold text-white">
+                Agenda competitiva
+              </h2>
+            </div>
 
-      {/* MÓDULOS */}
-      <section>
-        <div className="mb-5">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
-            Módulos principales
-          </p>
-          <h2 className="mt-2 text-3xl font-bold text-white">
-            Operación diaria del club
-          </h2>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <QuickCard
-            title="Jugadores"
-            description="Alta, edición y administración del plantel con foco deportivo."
-            href="/panel/players"
-            icon={Users}
-          />
-          <QuickCard
-            title="Sesiones"
-            description="Creación de partidos y entrenamientos desde un flujo claro."
-            href="/panel/sessions"
-            icon={CalendarDays}
-          />
-          <QuickCard
-            title="Asistente IA"
-            description="Generación de opciones y lectura táctica basada en datos."
-            href="/panel/assistant"
-            icon={BrainCircuit}
-          />
-        </div>
-      </section>
-
-      {/* PARTIDOS */}
-      <section className={`${shellClassName()} p-6`}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
-              Próximos partidos
-            </p>
-            <h2 className="mt-2 text-3xl font-bold text-white">
-              Agenda competitiva
-            </h2>
+            <Link
+              href="/panel/seasons"
+              className="text-sm font-medium text-orange-300 transition hover:text-orange-200"
+            >
+              Ver calendario &rarr;
+            </Link>
           </div>
 
-          <Link
-            href="/panel/seasons"
-            className="text-sm font-medium text-orange-300 transition hover:text-orange-200"
-          >
-            Ver calendario &rarr;
-          </Link>
-        </div>
-
-        <div className="mt-6 grid gap-4 xl:grid-cols-3">
-          {mockFixtures.map((fixture) => (
-            <FixtureCard key={fixture.id} fixture={fixture} />
-          ))}
+          <div className="mt-6 grid gap-4">
+            {mockFixtures.map((fixture) => (
+              <FixtureCard key={fixture.id} fixture={fixture} />
+            ))}
+          </div>
         </div>
       </section>
     </div>
