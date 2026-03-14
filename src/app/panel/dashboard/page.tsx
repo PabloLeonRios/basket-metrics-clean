@@ -70,38 +70,138 @@ function KpiCard({
 }
 
 /* =====================================
-   CAMISETA DE BÁSQUET SVG
+   CAMISETA PRO DE BÁSQUET
 ===================================== */
 
 function Jersey({
   number,
+  primary = "#ff6a00",
+  secondary = "#ff8b2b",
+  accent = "#22120a",
 }: {
   number: number;
+  primary?: string;
+  secondary?: string;
+  accent?: string;
 }) {
   return (
     <div className="flex items-center justify-center">
       <svg
-        viewBox="0 0 120 140"
-        className="h-20 w-16 drop-shadow-[0_0_12px_rgba(255,120,0,0.4)]"
+        viewBox="0 0 180 210"
+        className="h-24 w-20 drop-shadow-[0_0_20px_rgba(255,106,0,0.26)]"
+        aria-hidden="true"
       >
+        <defs>
+          <linearGradient id={`jerseyGrad-${number}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={secondary} />
+            <stop offset="100%" stopColor={primary} />
+          </linearGradient>
+
+          <linearGradient id={`sideGrad-${number}`} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#ffd2a6" stopOpacity="0.45" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+
+        {/* Contorno principal */}
         <path
-          d="M20 20 L40 10 L80 10 L100 20 L100 120 L20 120 Z"
-          fill="#ff6a00"
-          stroke="#111"
-          strokeWidth="3"
-          rx="8"
+          d="
+            M52 20
+            L72 10
+            L108 10
+            L128 20
+            L151 42
+            L139 70
+            L134 82
+            L134 184
+            Q134 195 123 195
+            L57 195
+            Q46 195 46 184
+            L46 82
+            L41 70
+            L29 42
+            Z
+          "
+          fill={`url(#jerseyGrad-${number})`}
+          stroke="#120c08"
+          strokeWidth="5"
+          strokeLinejoin="round"
         />
 
+        {/* Recorte cuello */}
+        <path
+          d="M73 12 Q90 34 107 12"
+          fill="none"
+          stroke={accent}
+          strokeWidth="8"
+          strokeLinecap="round"
+        />
+
+        {/* Bordes hombros / mangas */}
+        <path
+          d="M52 20 L29 42 L41 70"
+          fill="none"
+          stroke={accent}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M128 20 L151 42 L139 70"
+          fill="none"
+          stroke={accent}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* Paneles laterales */}
+        <path
+          d="M49 66 L64 78 L64 192 L57 192 Q49 192 49 184 Z"
+          fill="url(#sideGrad-${number})"
+          opacity="0.55"
+        />
+        <path
+          d="M131 66 L116 78 L116 192 L123 192 Q131 192 131 184 Z"
+          fill="url(#sideGrad-${number})"
+          opacity="0.28"
+        />
+
+        {/* Cintura/estructura */}
+        <path
+          d="M64 78 Q90 92 116 78"
+          fill="none"
+          stroke="#ffcf9f"
+          strokeOpacity="0.25"
+          strokeWidth="3"
+        />
+
+        {/* Número */}
         <text
-          x="60"
-          y="80"
+          x="90"
+          y="120"
           textAnchor="middle"
-          fontSize="40"
-          fontWeight="bold"
-          fill="#fff"
+          fontSize="56"
+          fontWeight="900"
+          fill="#ffffff"
+          style={{
+            paintOrder: "stroke",
+            stroke: "#7a3300",
+            strokeWidth: 3,
+            letterSpacing: "-2px",
+          }}
         >
           {number}
         </text>
+
+        {/* Línea inferior */}
+        <path
+          d="M56 170 H124"
+          stroke="#ffd4aa"
+          strokeOpacity="0.35"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
       </svg>
     </div>
   );
@@ -125,22 +225,22 @@ function TopPlayer({
   return (
     <Link
       href={href}
-      className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-orange-400/40 hover:bg-white/[0.05]"
+      className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-orange-400/40 hover:bg-white/[0.05]"
     >
       <Jersey number={number} />
 
-      <div className="flex flex-col">
-        <span className="text-sm font-semibold text-white">
+      <div className="min-w-0">
+        <span className="block truncate text-2xl font-bold text-white">
           {name}
         </span>
 
-        <span className="text-xs text-slate-400">
+        <span className="mt-1 block text-sm text-slate-400">
           Eficiencia
         </span>
       </div>
 
       <div className="ml-auto text-right">
-        <span className="text-lg font-bold text-orange-400">
+        <span className="text-4xl font-black tracking-tight text-orange-400">
           +{efficiency}
         </span>
       </div>
@@ -277,9 +377,23 @@ export default function DashboardPage() {
       {/* TOP RENDIMIENTO */}
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-white">
-          Top rendimiento
-        </h2>
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+              Rendimiento individual
+            </p>
+            <h2 className="mt-2 text-2xl font-bold text-white">
+              Top rendimiento
+            </h2>
+          </div>
+
+          <Link
+            href="/panel/players"
+            className="text-sm font-medium text-orange-300 transition hover:text-orange-200"
+          >
+            Ver plantel completo →
+          </Link>
+        </div>
 
         <div className="grid gap-4 md:grid-cols-3">
           {topPlayers.map((player) => (
