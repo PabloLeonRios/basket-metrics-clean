@@ -1,352 +1,187 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import {
-  ArrowRight,
-  BrainCircuit,
-  CalendarDays,
-  ChevronRight,
-  Shield,
-  Sparkles,
-  Trophy,
-  Users,
-  Gauge,
-  MapPinned,
-} from 'lucide-react';
+/**
+ * =========================================
+ *  DASHBOARD PRINCIPAL — BASKET METRICS
+ * =========================================
+ *
+ * NOTAS PARA PABLITO (Mongo / Backend futuro)
+ *
+ * Este dashboard hoy funciona en modo DEMO.
+ *
+ * Datos actuales:
+ * - jugadores
+ * - sesiones
+ * - métricas básicas
+ *
+ * Origen actual:
+ * - stores locales
+ *
+ * Migración futura:
+ *
+ * GET /api/dashboard/overview
+ *
+ * respuesta esperada:
+ *
+ * {
+ *   players: number
+ *   sessions: number
+ *   lastSessionDate: string
+ *   activePlayers: number
+ * }
+ *
+ * Luego estos datos reemplazarán los valores mock.
+ *
+ */
 
-interface TopPlayer {
-  playerId: string;
-  name: string;
-  dorsal?: number;
-  avgGameScore: number;
-  totalGames: number;
-  avgPoints: number;
-}
-
-interface PanelStats {
-  players: number | null;
-  sessions: number | null;
-}
-
-type Fixture = {
-  id: string;
-  date: string;
-  time: string;
-  opponent: string;
-  location: string;
-  isHome: boolean;
-};
-
-const mockFixtures: Fixture[] = [
-  {
-    id: '1',
-    date: '15 Nov 2024',
-    time: '20:00',
-    opponent: 'Águilas BC',
-    location: 'Pabellón Principal',
-    isHome: true,
-  },
-  {
-    id: '2',
-    date: '22 Nov 2024',
-    time: '18:30',
-    opponent: 'Toros FC',
-    location: 'Cancha Visitante',
-    isHome: false,
-  },
-  {
-    id: '3',
-    date: '29 Nov 2024',
-    time: '19:00',
-    opponent: 'Leones',
-    location: 'Pabellón Principal',
-    isHome: true,
-  },
-];
+import Link from "next/link";
+import { Users, Activity, ClipboardList, ArrowRight } from "lucide-react";
 
 function shellClassName() {
-  return 'rounded-[28px] border border-white/10 bg-[#0f172a] shadow-[0_12px_40px_rgba(0,0,0,0.25)]';
+  return "rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1624] to-[#070e18]";
 }
 
 function KpiCard({
   title,
   value,
   helper,
+  icon: Icon,
+  href,
 }: {
   title: string;
   value: string;
   helper: string;
-}) {
-  return (
-    <div className={`${shellClassName()} p-5`}>
-      <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
-        {title}
-      </p>
-      <p className="mt-3 text-4xl font-bold tracking-tight text-white">
-        {value}
-      </p>
-      <p className="mt-3 text-sm leading-6 text-slate-400">{helper}</p>
-    </div>
-  );
-}
-
-function QuickCard({
-  title,
-  description,
-  href,
-}: {
-  title: string;
-  description: string;
+  icon: any;
   href: string;
 }) {
   return (
     <Link
       href={href}
-      className={`${shellClassName()} group block p-5 transition-all duration-200 hover:-translate-y-1 hover:border-orange-400/20`}
+      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-orange-400/40 hover:bg-white/[0.05]"
     >
-      <h3 className="text-xl font-semibold text-white">{title}</h3>
-
-      <p className="mt-2 text-sm leading-7 text-slate-400">{description}</p>
-
-      <div className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-orange-300">
-        Abrir módulo
-        <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+      <div className="flex items-center justify-between">
+        <Icon className="h-6 w-6 text-orange-400" />
       </div>
+
+      <p className="mt-4 text-xs uppercase tracking-widest text-slate-400">
+        {title}
+      </p>
+
+      <p className="mt-2 text-3xl font-bold text-white">{value}</p>
+
+      <p className="mt-2 text-xs text-slate-400">{helper}</p>
+
+      <span className="absolute right-4 bottom-4 text-slate-500 opacity-0 transition group-hover:opacity-100">
+        →
+      </span>
     </Link>
-  );
-}
-
-function TopPlayerCard({
-  player,
-  index,
-}: {
-  player: TopPlayer;
-  index: number;
-}) {
-  const place =
-    index === 0 ? '01' : index === 1 ? '02' : index === 2 ? '03' : '00';
-
-  return (
-    <Link
-      href={`/panel/players/${player.playerId}`}
-      className={`${shellClassName()} group block p-5 transition-all duration-200 hover:-translate-y-1`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <span className="inline-flex rounded-full border border-orange-400/15 bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-300">
-          #{place}
-        </span>
-
-        <ChevronRight className="h-4 w-4 text-slate-500 transition group-hover:translate-x-1 group-hover:text-white" />
-      </div>
-
-      <div className="mt-5 flex items-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-2xl font-bold text-white">
-          {player.dorsal ?? '-'}
-        </div>
-
-        <div className="min-w-0">
-          <p className="truncate text-lg font-semibold text-white">
-            {player.name}
-          </p>
-
-          <p className="mt-1 text-sm text-slate-400">
-            {player.totalGames} partidos evaluados
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-5 grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-center">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-            VAL
-          </p>
-
-          <p className="mt-2 text-xl font-bold text-white">
-            {player.avgGameScore.toFixed(1)}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-center">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-            PTS
-          </p>
-
-          <p className="mt-2 text-xl font-bold text-white">
-            {player.avgPoints.toFixed(1)}
-          </p>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-function FixtureCard({ fixture }: { fixture: Fixture }) {
-  return (
-    <div className={`${shellClassName()} relative overflow-hidden p-5`}>
-      <div
-        className={`absolute left-0 top-0 h-full w-1 ${
-          fixture.isHome ? 'bg-orange-500' : 'bg-slate-500'
-        }`}
-      />
-
-      <div className="ml-2">
-        <span className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-slate-300">
-          {fixture.isHome ? 'Local' : 'Visitante'}
-        </span>
-
-        <p className="mt-5 text-xs uppercase tracking-[0.18em] text-slate-500">
-          VS
-        </p>
-
-        <h4 className="mt-2 text-2xl font-bold text-white">
-          {fixture.opponent}
-        </h4>
-
-        <div className="mt-5 space-y-3 border-t border-white/8 pt-4 text-sm text-slate-400">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-slate-500" />
-            <span>{fixture.date}</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Gauge className="h-4 w-4 text-slate-500" />
-            <span>{fixture.time}</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <MapPinned className="h-4 w-4 text-slate-500" />
-            <span className="truncate">{fixture.location}</span>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 
 export default function DashboardPage() {
-  const { user, loading } = useAuth();
-
-  const [topPlayers, setTopPlayers] = useState<TopPlayer[]>([]);
-  const [topPlayersLoading, setTopPlayersLoading] = useState(true);
-
-  const [panelStats, setPanelStats] = useState<PanelStats>({
-    players: null,
-    sessions: null,
-  });
-
-  useEffect(() => {
-    async function fetchTopPlayers() {
-      if (!user?._id) return;
-
-      try {
-        setTopPlayersLoading(true);
-
-        const response = await fetch(
-          `/api/stats/top-players?coachId=${user._id}`
-        );
-
-        const { data } = await response.json();
-
-        setTopPlayers(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setTopPlayersLoading(false);
-      }
-    }
-
-    if (user?._id) fetchTopPlayers();
-  }, [user]);
-
-  useEffect(() => {
-    async function safeCount(url: string): Promise<number | null> {
-      try {
-        const response = await fetch(url);
-        const json = await response.json();
-
-        if (Array.isArray(json)) return json.length;
-        if (Array.isArray(json?.data)) return json.data.length;
-
-        return null;
-      } catch {
-        return null;
-      }
-    }
-
-    async function fetchPanelStats() {
-      const [players, sessions] = await Promise.all([
-        safeCount('/api/players'),
-        safeCount('/api/sessions'),
-      ]);
-
-      setPanelStats({ players, sessions });
-    }
-
-    fetchPanelStats();
-  }, []);
-
-  const topPlayerValue = useMemo(() => {
-    if (!topPlayers.length) return '—';
-    return topPlayers[0].avgGameScore.toFixed(1);
-  }, [topPlayers]);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-orange-500" />
-          <span className="text-sm text-slate-400">Cargando panel...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (user?.role !== 'entrenador') {
-    return (
-      <div className={`${shellClassName()} p-10 text-center`}>
-        <Shield className="mx-auto h-8 w-8 text-orange-400" />
-        <h2 className="mt-4 text-2xl font-bold text-white">
-          Acceso solo para entrenadores
-        </h2>
-      </div>
-    );
-  }
+  const panelStats = {
+    players: 12,
+    sessions: 4,
+    activePlayers: 10,
+  };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
+      {/* HERO */}
 
-      {/* KPIs */}
+      <section className={`${shellClassName()} overflow-hidden p-8 md:p-10`}>
+        <div className="grid gap-10 xl:grid-cols-[1.35fr_0.65fr]">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-orange-300">
+              Basket Metrics para clubes
+            </div>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <h1 className="mt-6 max-w-4xl text-3xl font-bold tracking-tight text-white md:text-4xl">
+              Rendimiento y análisis del equipo en una sola plataforma
+            </h1>
 
-        <KpiCard
-          title="Plantel activo"
-          value={panelStats.players !== null ? String(panelStats.players) : '—'}
-          helper="Cantidad detectada desde el módulo de jugadores."
-        />
+            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-400">
+              Esta plataforma está pensada para que entrenadores y staff puedan
+              visualizar rápido el estado del equipo, tomar decisiones y seguir
+              la evolución de cada jugador.
+            </p>
 
-        <KpiCard
-          title="Sesiones"
-          value={panelStats.sessions !== null ? String(panelStats.sessions) : '—'}
-          helper="Cantidad detectada desde el módulo de sesiones."
-        />
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/panel/players"
+                className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-400"
+              >
+                Ver plantel
+                <ArrowRight className="h-4 w-4" />
+              </Link>
 
-        <KpiCard
-          title="Mejor VAL"
-          value={topPlayerValue}
-          helper="Mejor promedio actual entre jugadores destacados."
-        />
+              <Link
+                href="/panel/sessions"
+                className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]"
+              >
+                Gestionar sesiones
+              </Link>
+            </div>
+          </div>
 
-        <KpiCard
-          title="Asistente IA"
-          value="Lista"
-          helper="Disponible para consultas tácticas."
-        />
+          <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-6">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+              Panel principal
+            </p>
 
+            <h3 className="mt-2 text-2xl font-bold text-white">
+              Control del rendimiento
+            </h3>
+
+            <p className="mt-3 text-sm leading-7 text-slate-400">
+              Desde este panel se accede a los módulos principales del sistema y
+              se obtiene una lectura rápida del estado del equipo.
+            </p>
+
+            <div className="mt-6 space-y-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
+                Seguimiento de jugadores
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
+                Análisis de sesiones y rendimiento
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
+                Datos para entrenadores y staff
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
+      {/* KPIS */}
+
+      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <KpiCard
+          title="Jugadores registrados"
+          value={String(panelStats.players)}
+          helper="Cantidad total de jugadores cargados."
+          icon={Users}
+          href="/panel/players"
+        />
+
+        <KpiCard
+          title="Sesiones registradas"
+          value={String(panelStats.sessions)}
+          helper="Entrenamientos registrados en el sistema."
+          icon={ClipboardList}
+          href="/panel/sessions"
+        />
+
+        <KpiCard
+          title="Jugadores activos"
+          value={String(panelStats.activePlayers)}
+          helper="Jugadores con actividad reciente."
+          icon={Activity}
+          href="/panel/players"
+        />
+      </section>
     </div>
   );
 }
