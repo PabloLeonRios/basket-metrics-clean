@@ -103,7 +103,6 @@ function Jersey({
           </linearGradient>
         </defs>
 
-        {/* Contorno principal */}
         <path
           d="
             M52 20
@@ -128,7 +127,6 @@ function Jersey({
           strokeLinejoin="round"
         />
 
-        {/* Recorte cuello */}
         <path
           d="M73 12 Q90 34 107 12"
           fill="none"
@@ -137,7 +135,6 @@ function Jersey({
           strokeLinecap="round"
         />
 
-        {/* Bordes hombros / mangas */}
         <path
           d="M52 20 L29 42 L41 70"
           fill="none"
@@ -155,19 +152,17 @@ function Jersey({
           strokeLinejoin="round"
         />
 
-        {/* Paneles laterales */}
         <path
           d="M49 66 L64 78 L64 192 L57 192 Q49 192 49 184 Z"
-          fill="url(#sideGrad-${number})"
+          fill={`url(#sideGrad-${number})`}
           opacity="0.55"
         />
         <path
           d="M131 66 L116 78 L116 192 L123 192 Q131 192 131 184 Z"
-          fill="url(#sideGrad-${number})"
+          fill={`url(#sideGrad-${number})`}
           opacity="0.28"
         />
 
-        {/* Cintura/estructura */}
         <path
           d="M64 78 Q90 92 116 78"
           fill="none"
@@ -176,7 +171,6 @@ function Jersey({
           strokeWidth="3"
         />
 
-        {/* Número */}
         <text
           x="90"
           y="120"
@@ -194,7 +188,6 @@ function Jersey({
           {number}
         </text>
 
-        {/* Línea inferior */}
         <path
           d="M56 170 H124"
           stroke="#ffd4aa"
@@ -229,8 +222,8 @@ function TopPlayer({
     >
       <Jersey number={number} />
 
-      <div className="min-w-0">
-        <span className="block truncate text-2xl font-bold text-white">
+      <div className="min-w-0 flex-1">
+        <span className="block text-xl font-bold leading-tight text-white">
           {name}
         </span>
 
@@ -277,27 +270,27 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
       {/* HERO */}
 
-      <section className={`${shellClassName()} overflow-hidden p-8 md:p-10`}>
-        <div className="grid gap-10 xl:grid-cols-[1.35fr_0.65fr]">
+      <section className={`${shellClassName()} overflow-hidden px-8 py-6 md:px-10 md:py-7`}>
+        <div className="grid gap-8 xl:grid-cols-[1.5fr_0.5fr]">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-orange-300">
               Basket Metrics para clubes
             </div>
 
-            <h1 className="mt-6 max-w-4xl text-3xl font-bold tracking-tight text-white md:text-4xl">
+            <h1 className="mt-5 max-w-4xl text-3xl font-bold tracking-tight text-white md:text-4xl">
               Rendimiento y análisis del equipo en una sola plataforma
             </h1>
 
-            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-400">
+            <p className="mt-4 max-w-2xl text-base leading-8 text-slate-400">
               Plataforma pensada para entrenadores y staff que necesitan
               visualizar rápido el estado del equipo y tomar decisiones
               basadas en datos.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href="/panel/players"
                 className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-400"
@@ -325,11 +318,10 @@ export default function DashboardPage() {
             </h3>
 
             <p className="mt-3 text-sm leading-7 text-slate-400">
-              Acceso rápido a los módulos principales del club y
-              seguimiento del equipo.
+              Acceso rápido a los módulos principales del club y seguimiento del equipo.
             </p>
 
-            <div className="mt-6 space-y-3">
+            <div className="mt-5 space-y-3">
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
                 Seguimiento de jugadores
               </div>
@@ -351,62 +343,4 @@ export default function DashboardPage() {
       <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         <KpiCard
           title="Jugadores registrados"
-          value={String(panelStats.players)}
-          helper="Cantidad total de jugadores cargados."
-          icon={Users}
-          href="/panel/players"
-        />
-
-        <KpiCard
-          title="Sesiones registradas"
-          value={String(panelStats.sessions)}
-          helper="Entrenamientos registrados."
-          icon={ClipboardList}
-          href="/panel/sessions"
-        />
-
-        <KpiCard
-          title="Jugadores activos"
-          value={String(panelStats.activePlayers)}
-          helper="Jugadores con actividad reciente."
-          icon={Activity}
-          href="/panel/players"
-        />
-      </section>
-
-      {/* TOP RENDIMIENTO */}
-
-      <section className="space-y-4">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
-              Rendimiento individual
-            </p>
-            <h2 className="mt-2 text-2xl font-bold text-white">
-              Top rendimiento
-            </h2>
-          </div>
-
-          <Link
-            href="/panel/players"
-            className="text-sm font-medium text-orange-300 transition hover:text-orange-200"
-          >
-            Ver plantel completo →
-          </Link>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          {topPlayers.map((player) => (
-            <TopPlayer
-              key={player.id}
-              name={player.name}
-              number={player.number}
-              efficiency={player.efficiency}
-              href={`/panel/players/${player.id}`}
-            />
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
+         
