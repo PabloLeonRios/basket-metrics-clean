@@ -270,27 +270,27 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <section
-        className={`${shellClassName()} overflow-hidden px-8 py-6 md:px-10 md:py-7`}
+        className={`${shellClassName()} overflow-hidden px-8 py-5 md:px-10 md:py-6`}
       >
-        <div className="grid gap-8 xl:grid-cols-[1.5fr_0.5fr]">
+        <div className="grid gap-6 xl:grid-cols-[1.62fr_0.38fr]">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-orange-300">
               Basket Metrics para clubes
             </div>
 
-            <h1 className="mt-5 max-w-4xl text-3xl font-bold tracking-tight text-white md:text-4xl">
+            <h1 className="mt-4 max-w-4xl text-3xl font-bold tracking-tight text-white md:text-4xl">
               Rendimiento y análisis del equipo en una sola plataforma
             </h1>
 
-            <p className="mt-4 max-w-3xl text-base leading-8 text-slate-400">
+            <p className="mt-3 max-w-3xl text-base leading-8 text-slate-400">
               Plataforma pensada para entrenadores y staff que necesitan
-              visualizar rápido el estado del equipo y tomar decisiones
-              basadas en datos.
+              visualizar rápido el estado del equipo y tomar decisiones basadas
+              en datos.
             </p>
 
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-5 flex flex-wrap gap-3">
               <Link
                 href="/panel/players"
                 className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-400"
@@ -308,21 +308,20 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-5">
+          <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
             <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
               Panel principal
             </p>
 
-            <h3 className="mt-2 text-2xl font-bold text-white">
+            <h3 className="mt-2 text-xl font-bold text-white">
               Control del rendimiento
             </h3>
 
-            <p className="mt-3 text-sm leading-7 text-slate-400">
-              Acceso rápido a los módulos principales del club y seguimiento del
-              equipo.
+            <p className="mt-2 text-sm leading-7 text-slate-400">
+              Acceso rápido a los módulos principales del club.
             </p>
 
-            <div className="mt-5 space-y-3">
+            <div className="mt-4 space-y-2.5">
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
                 Seguimiento de jugadores
               </div>
@@ -336,6 +335,39 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+              Rendimiento individual
+            </p>
+
+            <h2 className="mt-1 text-2xl font-bold text-white">
+              Top rendimiento
+            </h2>
+          </div>
+
+          <Link
+            href="/panel/players"
+            className="text-sm font-medium text-orange-300 transition hover:text-orange-200"
+          >
+            Ver plantel completo →
+          </Link>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          {topPlayers.map((player) => (
+            <TopPlayerCard
+              key={player.id}
+              name={player.name}
+              number={player.number}
+              efficiency={player.efficiency}
+              href={`/panel/players/${player.id}`}
+            />
+          ))}
         </div>
       </section>
 
@@ -363,39 +395,6 @@ export default function DashboardPage() {
           icon={Activity}
           href="/panel/players"
         />
-      </section>
-
-      <section className="space-y-4">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
-              Rendimiento individual
-            </p>
-
-            <h2 className="mt-2 text-2xl font-bold text-white">
-              Top rendimiento
-            </h2>
-          </div>
-
-          <Link
-            href="/panel/players"
-            className="text-sm font-medium text-orange-300 transition hover:text-orange-200"
-          >
-            Ver plantel completo →
-          </Link>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          {topPlayers.map((player) => (
-            <TopPlayerCard
-              key={player.id}
-              name={player.name}
-              number={player.number}
-              efficiency={player.efficiency}
-              href={`/panel/players/${player.id}`}
-            />
-          ))}
-        </div>
       </section>
     </div>
   );
