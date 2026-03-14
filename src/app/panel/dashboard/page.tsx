@@ -7,44 +7,19 @@
  *
  * NOTAS PARA PABLITO (Mongo / Backend futuro)
  *
- * Este dashboard hoy funciona en modo DEMO.
+ * Nuevo bloque agregado:
+ * - Top rendimiento jugadores
  *
- * Datos actuales:
- * - jugadores
- * - sesiones
- * - métricas básicas
- * - última sesión (mock)
- * - próximo partido (mock)
+ * Endpoint futuro sugerido:
  *
- * Origen actual:
- * - stores locales / mocks visuales
- *
- * Migración futura:
- *
- * GET /api/dashboard/overview
+ * GET /api/dashboard/top-players
  *
  * respuesta esperada:
  *
- * {
- *   players: number
- *   sessions: number
- *   activePlayers: number
- *   lastSession: {
- *     id: string
- *     title: string
- *     date: string
- *     type: string
- *   }
- *   nextMatch: {
- *     id: string
- *     rival: string
- *     date: string
- *     location: string
- *     isHome: boolean
- *   }
- * }
+ * [
+ *  { id, name, number, efficiency }
+ * ]
  *
- * Luego estos datos reemplazarán los valores mock.
  */
 
 import Link from "next/link";
@@ -53,8 +28,6 @@ import {
   Activity,
   ClipboardList,
   ArrowRight,
-  CalendarDays,
-  MapPinned,
 } from "lucide-react";
 
 function shellClassName() {
@@ -79,9 +52,7 @@ function KpiCard({
       href={href}
       className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-orange-400/40 hover:bg-white/[0.05]"
     >
-      <div className="flex items-center justify-between">
-        <Icon className="h-6 w-6 text-orange-400" />
-      </div>
+      <Icon className="h-6 w-6 text-orange-400" />
 
       <p className="mt-4 text-xs uppercase tracking-widest text-slate-400">
         {title}
@@ -98,37 +69,79 @@ function KpiCard({
   );
 }
 
-function InfoCard({
-  eyebrow,
-  title,
-  description,
-  href,
-  footer,
+/* =====================================
+   CAMISETA DE BÁSQUET SVG
+===================================== */
+
+function Jersey({
+  number,
 }: {
-  eyebrow: string;
-  title: string;
-  description: string;
+  number: number;
+}) {
+  return (
+    <div className="flex items-center justify-center">
+      <svg
+        viewBox="0 0 120 140"
+        className="h-20 w-16 drop-shadow-[0_0_12px_rgba(255,120,0,0.4)]"
+      >
+        <path
+          d="M20 20 L40 10 L80 10 L100 20 L100 120 L20 120 Z"
+          fill="#ff6a00"
+          stroke="#111"
+          strokeWidth="3"
+          rx="8"
+        />
+
+        <text
+          x="60"
+          y="80"
+          textAnchor="middle"
+          fontSize="40"
+          fontWeight="bold"
+          fill="#fff"
+        >
+          {number}
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+/* =====================================
+   CARD TOP PLAYER
+===================================== */
+
+function TopPlayer({
+  name,
+  number,
+  efficiency,
+  href,
+}: {
+  name: string;
+  number: number;
+  efficiency: number;
   href: string;
-  footer: string;
 }) {
   return (
     <Link
       href={href}
-      className="group block rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-orange-400/30 hover:bg-white/[0.05]"
+      className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-orange-400/40 hover:bg-white/[0.05]"
     >
-      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-        {eyebrow}
-      </p>
+      <Jersey number={number} />
 
-      <h3 className="mt-3 text-2xl font-bold text-white">{title}</h3>
+      <div className="flex flex-col">
+        <span className="text-sm font-semibold text-white">
+          {name}
+        </span>
 
-      <p className="mt-3 text-sm leading-7 text-slate-400">{description}</p>
+        <span className="text-xs text-slate-400">
+          Eficiencia
+        </span>
+      </div>
 
-      <div className="mt-6 flex items-center justify-between">
-        <span className="text-sm text-slate-300">{footer}</span>
-        <span className="inline-flex items-center gap-2 text-sm font-medium text-orange-300">
-          Abrir
-          <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+      <div className="ml-auto text-right">
+        <span className="text-lg font-bold text-orange-400">
+          +{efficiency}
         </span>
       </div>
     </Link>
@@ -142,22 +155,31 @@ export default function DashboardPage() {
     activePlayers: 10,
   };
 
-  const lastSession = {
-    title: "Entrenamiento técnico",
-    date: "Ayer · 19:00",
-    type: "Sesión cargada recientemente",
-  };
-
-  const nextMatch = {
-    rival: "Águilas BC",
-    date: "Viernes · 20:00",
-    location: "Pabellón Principal",
-    isHome: true,
-  };
+  const topPlayers = [
+    {
+      id: 1,
+      name: "Juan Pérez",
+      number: 23,
+      efficiency: 12,
+    },
+    {
+      id: 2,
+      name: "Lucas Díaz",
+      number: 7,
+      efficiency: 9,
+    },
+    {
+      id: 3,
+      name: "Martín Gómez",
+      number: 11,
+      efficiency: 8,
+    },
+  ];
 
   return (
     <div className="space-y-10">
       {/* HERO */}
+
       <section className={`${shellClassName()} overflow-hidden p-8 md:p-10`}>
         <div className="grid gap-10 xl:grid-cols-[1.35fr_0.65fr]">
           <div>
@@ -170,9 +192,9 @@ export default function DashboardPage() {
             </h1>
 
             <p className="mt-5 max-w-2xl text-base leading-8 text-slate-400">
-              Esta plataforma está pensada para que entrenadores y staff puedan
-              visualizar rápido el estado del equipo, tomar decisiones y seguir
-              la evolución de cada jugador.
+              Plataforma pensada para entrenadores y staff que necesitan
+              visualizar rápido el estado del equipo y tomar decisiones
+              basadas en datos.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -203,8 +225,8 @@ export default function DashboardPage() {
             </h3>
 
             <p className="mt-3 text-sm leading-7 text-slate-400">
-              Desde este panel se accede a los módulos principales del sistema y
-              se obtiene una lectura rápida del estado del equipo.
+              Acceso rápido a los módulos principales del club y
+              seguimiento del equipo.
             </p>
 
             <div className="mt-6 space-y-3">
@@ -213,11 +235,11 @@ export default function DashboardPage() {
               </div>
 
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
-                Análisis de sesiones y rendimiento
+                Análisis de sesiones
               </div>
 
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
-                Datos para entrenadores y staff
+                Datos para entrenadores
               </div>
             </div>
           </div>
@@ -225,6 +247,7 @@ export default function DashboardPage() {
       </section>
 
       {/* KPIS */}
+
       <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         <KpiCard
           title="Jugadores registrados"
@@ -237,7 +260,7 @@ export default function DashboardPage() {
         <KpiCard
           title="Sesiones registradas"
           value={String(panelStats.sessions)}
-          helper="Entrenamientos registrados en el sistema."
+          helper="Entrenamientos registrados."
           icon={ClipboardList}
           href="/panel/sessions"
         />
@@ -251,53 +274,24 @@ export default function DashboardPage() {
         />
       </section>
 
-      {/* BLOQUES ÚTILES */}
-      <section className="grid gap-6 xl:grid-cols-2">
-        <InfoCard
-          eyebrow="Última sesión"
-          title={lastSession.title}
-          description="Accedé rápido al último registro cargado y continuá el seguimiento del equipo sin perder tiempo."
-          href="/panel/sessions"
-          footer={`${lastSession.date} · ${lastSession.type}`}
-        />
+      {/* TOP RENDIMIENTO */}
 
-        <Link
-          href="/panel/sessions"
-          className="group block rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-orange-400/30 hover:bg-white/[0.05]"
-        >
-          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-            Próximo partido
-          </p>
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold text-white">
+          Top rendimiento
+        </h2>
 
-          <h3 className="mt-3 text-2xl font-bold text-white">
-            vs {nextMatch.rival}
-          </h3>
-
-          <p className="mt-3 text-sm leading-7 text-slate-400">
-            Visualizá el próximo compromiso del club y seguí la planificación deportiva.
-          </p>
-
-          <div className="mt-6 space-y-3 text-sm text-slate-300">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-orange-400" />
-              <span>{nextMatch.date}</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <MapPinned className="h-4 w-4 text-orange-400" />
-              <span>{nextMatch.location}</span>
-            </div>
-
-            <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-medium text-slate-300">
-              {nextMatch.isHome ? "Local" : "Visitante"}
-            </div>
-          </div>
-
-          <div className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-orange-300">
-            Ver detalle
-            <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-          </div>
-        </Link>
+        <div className="grid gap-4 md:grid-cols-3">
+          {topPlayers.map((player) => (
+            <TopPlayer
+              key={player.id}
+              name={player.name}
+              number={player.number}
+              efficiency={player.efficiency}
+              href={`/panel/players/${player.id}`}
+            />
+          ))}
+        </div>
       </section>
     </div>
   );
