@@ -12,137 +12,90 @@ interface JerseyIconProps {
  * ============================
  * COMPONENTE: JerseyIcon
  *
- * Este componente es puramente visual.
- * No depende de backend ni de datos remotos.
+ * Componente visual reutilizable para representar camiseta de jugador.
+ * No tiene dependencia de backend.
  *
- * Uso actual:
- * - cards de jugadores
- * - widgets visuales donde se represente camiseta
+ * Importante:
+ * - Mantener este componente liviano y reusable.
+ * - El "look final" puede variar según el contenedor donde se use.
+ * - En dashboard y players debe renderizar igual.
  *
- * Si a futuro se quisiera personalizar por club/equipo:
- * - aceptar props como:
- *   primaryColor
- *   secondaryColor
- *   textColor
- *   variant
- *
- * Por ahora:
- * - se deja una versión visual consistente con Basket Metrics
- * - estilo inspirado en el dashboard/top rendimiento
+ * Si más adelante quieren custom por equipo:
+ * - recibir palette / primary / secondary / textColor
  */
 
-const JerseyIcon: React.FC<JerseyIconProps> = ({ number, className = '' }) => {
+const JerseyIcon: React.FC<JerseyIconProps> = ({
+  number,
+  className = '',
+}) => {
   const displayNumber = number ?? '?';
 
   return (
     <div className={`relative ${className}`}>
       <svg
-        viewBox="0 0 120 120"
+        viewBox="0 0 100 100"
         xmlns="http://www.w3.org/2000/svg"
         className="h-full w-full"
         aria-hidden="true"
       >
-        <defs>
-          <linearGradient id="jerseyOrange" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ff9a2f" />
-            <stop offset="45%" stopColor="#ff7a0f" />
-            <stop offset="100%" stopColor="#f26500" />
-          </linearGradient>
+        {/* cuerpo principal */}
+        <path
+          d="M18 24 L31 14 L40 21 Q50 27 60 21 L69 14 L82 24 L74 40 L71 78 Q50 90 29 78 L26 40 Z"
+          fill="#f97316"
+          stroke="#7c2d12"
+          strokeWidth="2.5"
+          strokeLinejoin="round"
+        />
 
-          <linearGradient id="jerseyInnerGlow" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.28)" />
-            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-          </linearGradient>
+        {/* cuello */}
+        <path
+          d="M41 20 Q50 28 59 20"
+          fill="none"
+          stroke="#7c2d12"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+        />
 
-          <filter id="jerseyShadow" x="-30%" y="-30%" width="160%" height="160%">
-            <feDropShadow dx="0" dy="8" stdDeviation="6" floodColor="#000000" floodOpacity="0.35" />
-          </filter>
-        </defs>
+        {/* mangas internas */}
+        <path
+          d="M18 24 L28 37"
+          fill="none"
+          stroke="#7c2d12"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+        <path
+          d="M82 24 L72 37"
+          fill="none"
+          stroke="#7c2d12"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
 
-        {/* sombra general */}
-        <g filter="url(#jerseyShadow)">
-          {/* mangas */}
-          <path
-            d="M23 27 L42 13 L51 24 L39 45 L21 38 Z"
-            fill="url(#jerseyOrange)"
-            stroke="#261308"
-            strokeWidth="4"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M97 27 L78 13 L69 24 L81 45 L99 38 Z"
-            fill="url(#jerseyOrange)"
-            stroke="#261308"
-            strokeWidth="4"
-            strokeLinejoin="round"
-          />
+        {/* brillo superior sutil */}
+        <path
+          d="M30 18 Q50 30 70 18"
+          fill="none"
+          stroke="rgba(255,255,255,0.18)"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
 
-          {/* cuerpo */}
-          <path
-            d="M42 13
-               Q60 27 78 13
-               L86 25
-               L83 100
-               Q60 111 37 100
-               L34 25
-               Z"
-            fill="url(#jerseyOrange)"
-            stroke="#261308"
-            strokeWidth="4"
-            strokeLinejoin="round"
-          />
-
-          {/* cuello */}
-          <path
-            d="M48 14
-               Q60 24 72 14
-               Q68 8 60 8
-               Q52 8 48 14 Z"
-            fill="#1c0f08"
-            stroke="#261308"
-            strokeWidth="2"
-          />
-
-          {/* línea inferior */}
-          <path
-            d="M39 90 H81"
-            stroke="rgba(255,255,255,0.18)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          />
-
-          {/* líneas sutiles verticales */}
-          <path
-            d="M47 28 V96"
-            stroke="rgba(255,255,255,0.10)"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-          <path
-            d="M73 28 V96"
-            stroke="rgba(255,255,255,0.10)"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-
-          {/* brillo superior */}
-          <path
-            d="M42 13
-               Q60 27 78 13
-               L82 20
-               Q60 29 38 20
-               Z"
-            fill="rgba(255,255,255,0.14)"
-          />
-        </g>
+        {/* línea baja sutil */}
+        <path
+          d="M33 70 Q50 76 67 70"
+          fill="none"
+          stroke="rgba(255,255,255,0.10)"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
       </svg>
 
       <div className="absolute inset-0 flex items-center justify-center">
         <span
-          className="select-none text-[2.1em] font-black leading-none text-white"
+          className="select-none text-[1.65em] font-black leading-none text-white"
           style={{
-            textShadow:
-              '0 2px 0 rgba(0,0,0,0.45), 0 0 10px rgba(255,255,255,0.08)',
+            textShadow: '0 2px 4px rgba(0,0,0,0.35)',
           }}
         >
           {displayNumber}
