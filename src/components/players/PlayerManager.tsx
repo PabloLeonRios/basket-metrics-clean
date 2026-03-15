@@ -488,7 +488,7 @@ export default function PlayerManager() {
                       )}
                     </div>
 
-                    <h3 className="line-clamp-2 text-[30px] leading-[1.02] font-black tracking-[-0.04em] text-white sm:text-[32px]">
+                    <h3 className="line-clamp-2 text-2xl font-black leading-[1.05] tracking-[-0.03em] text-white">
                       {player.name}
                     </h3>
 
@@ -585,7 +585,10 @@ export default function PlayerManager() {
               </button>
             </div>
 
-            <form onSubmit={handleUpdatePlayer} className="space-y-6 px-5 py-5 md:px-6 md:py-6">
+            <form
+              onSubmit={handleUpdatePlayer}
+              className="space-y-6 px-5 py-5 md:px-6 md:py-6"
+            >
               <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center">
                   <div className="flex items-center gap-4">
@@ -788,10 +791,6 @@ export default function PlayerManager() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
     </div>
   );
 }
