@@ -20,10 +20,13 @@ interface Player {
  * --------------------------
  * Demo visual del módulo Players.
  *
- * Esta versión hace solo ajustes finos de UI:
- * - cards más compactas
- * - mejor alineación visual
+ * Esta versión mantiene la estructura actual y hace solo ajustes
+ * finos de UI para mejorar la jerarquía visual:
+ *
+ * - cards compactas
+ * - mejor alineación nombre / posición / score
  * - score menos invasivo
+ * - hover más premium
  * - misma camiseta del dashboard
  *
  * No tocar lógica desde acá.
@@ -185,13 +188,14 @@ export default function PlayerManager() {
             transition-all duration-200
             hover:border-orange-400/25
             hover:bg-white/[0.045]
+            hover:shadow-[0_10px_40px_rgba(0,0,0,0.35)]
           "
         >
           <div className="flex items-center gap-5">
             <Jersey number={player.number} />
 
             <div className="min-w-0">
-              <p className="text-[2rem] font-bold leading-none tracking-[-0.03em] text-white">
+              <p className="text-[2.15rem] font-bold leading-tight tracking-[-0.03em] text-white">
                 {player.name}
               </p>
 
@@ -210,7 +214,7 @@ export default function PlayerManager() {
               <p className="text-[1.1rem] uppercase tracking-[0.22em] text-white/35">
                 Score
               </p>
-              <p className="mt-1 text-[2.6rem] font-black leading-none tracking-[-0.04em] text-white">
+              <p className="mt-1 text-[2.1rem] font-extrabold leading-none tracking-[-0.02em] text-white">
                 +{player.score}
               </p>
             </div>
