@@ -12,16 +12,14 @@ interface JerseyIconProps {
  * ============================
  * COMPONENTE: JerseyIcon
  *
- * Componente visual reutilizable para representar camiseta de jugador.
- * No tiene dependencia de backend.
+ * Componente visual reusable para representar camiseta.
+ * No depende de backend.
  *
- * Importante:
- * - Mantener este componente liviano y reusable.
- * - El "look final" puede variar según el contenedor donde se use.
- * - En dashboard y players debe renderizar igual.
+ * Se dejó alineado visualmente con el bloque Top Players del dashboard.
  *
- * Si más adelante quieren custom por equipo:
- * - recibir palette / primary / secondary / textColor
+ * Futuro:
+ * - podría aceptar variantes por equipo
+ * - podría aceptar colores por props
  */
 
 const JerseyIcon: React.FC<JerseyIconProps> = ({
@@ -38,7 +36,6 @@ const JerseyIcon: React.FC<JerseyIconProps> = ({
         className="h-full w-full"
         aria-hidden="true"
       >
-        {/* cuerpo principal */}
         <path
           d="M18 24 L31 14 L40 21 Q50 27 60 21 L69 14 L82 24 L74 40 L71 78 Q50 90 29 78 L26 40 Z"
           fill="#f97316"
@@ -47,7 +44,6 @@ const JerseyIcon: React.FC<JerseyIconProps> = ({
           strokeLinejoin="round"
         />
 
-        {/* cuello */}
         <path
           d="M41 20 Q50 28 59 20"
           fill="none"
@@ -56,7 +52,6 @@ const JerseyIcon: React.FC<JerseyIconProps> = ({
           strokeLinecap="round"
         />
 
-        {/* mangas internas */}
         <path
           d="M18 24 L28 37"
           fill="none"
@@ -64,6 +59,7 @@ const JerseyIcon: React.FC<JerseyIconProps> = ({
           strokeWidth="2"
           strokeLinecap="round"
         />
+
         <path
           d="M82 24 L72 37"
           fill="none"
@@ -72,7 +68,6 @@ const JerseyIcon: React.FC<JerseyIconProps> = ({
           strokeLinecap="round"
         />
 
-        {/* brillo superior sutil */}
         <path
           d="M30 18 Q50 30 70 18"
           fill="none"
@@ -81,7 +76,6 @@ const JerseyIcon: React.FC<JerseyIconProps> = ({
           strokeLinecap="round"
         />
 
-        {/* línea baja sutil */}
         <path
           d="M33 70 Q50 76 67 70"
           fill="none"
