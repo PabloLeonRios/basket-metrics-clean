@@ -26,13 +26,13 @@ import {
  * ============================
  *  NOTAS PARA PABLITO (Mongo)
  * ============================
- * PlayerManager v3
+ * PlayerManager v4
  *
  * Objetivo:
  * - UI más limpia para gestión diaria
  * - menos blanco
- * - menos ruido visual
  * - cards compactas y legibles
+ * - camiseta alineada visualmente con Top Players del dashboard
  *
  * Lógica mantenida:
  * - fetch actual
@@ -462,10 +462,10 @@ export default function PlayerManager() {
                 className="group rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(12,18,31,0.98)_0%,rgba(9,14,23,1)_100%)] p-5 shadow-[0_18px_45px_rgba(0,0,0,0.18)] transition-all duration-300 hover:-translate-y-1 hover:border-orange-500/30 hover:shadow-[0_24px_60px_rgba(0,0,0,0.28)]"
               >
                 <div className="flex items-center gap-4">
-                  <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.18),transparent_58%)]">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/[0.04] ring-1 ring-white/8">
                     <JerseyIcon
                       number={player.dorsal}
-                      className="h-20 w-20 text-orange-400 drop-shadow-[0_8px_18px_rgba(249,115,22,0.24)]"
+                      className="h-16 w-16 flex-shrink-0"
                     />
                   </div>
 
