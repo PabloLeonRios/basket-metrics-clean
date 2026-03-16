@@ -1,102 +1,73 @@
-// src/components/ui/JerseyIcon.tsx
-import React from 'react';
+import React from "react";
+
+/**
+ * ============================
+ * NOTAS PARA PABLITO (Mongo)
+ * ============================
+ * Este componente es puramente visual.
+ * No tiene dependencia con backend.
+ *
+ * Se usa en:
+ * - Dashboard
+ * - Players
+ *
+ * Mantener reutilizable.
+ */
 
 interface JerseyIconProps {
   number?: number | string;
   className?: string;
 }
 
-/**
- * ============================
- *  NOTAS PARA PABLITO (Mongo)
- * ============================
- * COMPONENTE: JerseyIcon
- *
- * Componente visual reusable para representar camiseta.
- * No depende de backend.
- *
- * Se dejó alineado visualmente con el bloque Top Players del dashboard.
- *
- * Futuro:
- * - podría aceptar variantes por equipo
- * - podría aceptar colores por props
- */
-
-const JerseyIcon: React.FC<JerseyIconProps> = ({
-  number,
-  className = '',
-}) => {
-  const displayNumber = number ?? '?';
-
+export default function JerseyIcon({ number, className }: JerseyIconProps) {
   return (
     <div className={`relative ${className}`}>
       <svg
-        viewBox="0 0 100 100"
+        viewBox="0 0 120 120"
         xmlns="http://www.w3.org/2000/svg"
-        className="h-full w-full"
-        aria-hidden="true"
+        className="w-full h-full drop-shadow-[0_0_8px_rgba(255,120,0,0.4)]"
       >
-        <path
-          d="M18 24 L31 14 L40 21 Q50 27 60 21 L69 14 L82 24 L74 40 L71 78 Q50 90 29 78 L26 40 Z"
-          fill="#f97316"
-          stroke="#7c2d12"
-          strokeWidth="2.5"
-          strokeLinejoin="round"
-        />
+        <defs>
+          <linearGradient id="jerseyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#ff8c1a" />
+            <stop offset="100%" stopColor="#ff6a00" />
+          </linearGradient>
+        </defs>
 
+        {/* jersey body */}
         <path
-          d="M41 20 Q50 28 59 20"
-          fill="none"
-          stroke="#7c2d12"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        />
-
-        <path
-          d="M18 24 L28 37"
-          fill="none"
-          stroke="#7c2d12"
+          d="
+          M35 20
+          L50 30
+          L70 30
+          L85 20
+          L95 35
+          L85 45
+          L85 90
+          Q60 105 35 90
+          L35 45
+          L25 35
+          Z
+          "
+          fill="url(#jerseyGradient)"
+          stroke="#ffb366"
           strokeWidth="2"
-          strokeLinecap="round"
         />
 
+        {/* neck */}
         <path
-          d="M82 24 L72 37"
+          d="M50 30 Q60 40 70 30"
+          stroke="#1a1a1a"
+          strokeWidth="3"
           fill="none"
-          stroke="#7c2d12"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-
-        <path
-          d="M30 18 Q50 30 70 18"
-          fill="none"
-          stroke="rgba(255,255,255,0.18)"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-
-        <path
-          d="M33 70 Q50 76 67 70"
-          fill="none"
-          stroke="rgba(255,255,255,0.10)"
-          strokeWidth="1.8"
-          strokeLinecap="round"
         />
       </svg>
 
       <div className="absolute inset-0 flex items-center justify-center">
-        <span
-          className="select-none text-[1.65em] font-black leading-none text-white"
-          style={{
-            textShadow: '0 2px 4px rgba(0,0,0,0.35)',
-          }}
-        >
-          {displayNumber}
+        <span className="text-2xl font-bold text-white drop-shadow">
+          {number || "?"}
         </span>
       </div>
     </div>
   );
-};
-
-export default JerseyIcon;
+}
