@@ -47,10 +47,9 @@ export default function ClubInfoPage() {
       setLogoUrl(user.team.logoUrl);
     }
 
-    if ((user?.team as { jerseyUrl?: string } | undefined)?.jerseyUrl) {
-      setJerseyUrl(
-        (user.team as { jerseyUrl?: string }).jerseyUrl || '',
-      );
+    const teamWithJersey = user?.team as ({ jerseyUrl?: string } & typeof user.team) | undefined;
+    if (teamWithJersey?.jerseyUrl) {
+      setJerseyUrl(teamWithJersey.jerseyUrl);
     }
   }, [user]);
 
@@ -75,11 +74,9 @@ export default function ClubInfoPage() {
             height *= maxWidth / width;
             width = maxWidth;
           }
-        } else {
-          if (height > maxHeight) {
-            width *= maxHeight / height;
-            height = maxHeight;
-          }
+        } else if (height > maxHeight) {
+          width *= maxHeight / height;
+          height = maxHeight;
         }
 
         canvas.width = width;
@@ -155,7 +152,6 @@ export default function ClubInfoPage() {
       <h1 className="mb-6 text-2xl font-bold">Datos de Club</h1>
 
       <form onSubmit={handleSubmit} className="space-y-8">
-        {/* LOGO */}
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Logo del Club
@@ -221,7 +217,6 @@ export default function ClubInfoPage() {
           </div>
         </div>
 
-        {/* CAMISETA */}
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Camiseta del Club
