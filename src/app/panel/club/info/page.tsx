@@ -32,6 +32,12 @@ import { toast } from 'react-toastify';
  *   2) URL externa
  */
 
+type TeamWithAssets = {
+  _id?: string;
+  logoUrl?: string;
+  jerseyUrl?: string;
+};
+
 export default function ClubInfoPage() {
   const { user, isAuthenticated } = useAuth();
 
@@ -43,13 +49,14 @@ export default function ClubInfoPage() {
   const jerseyInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (user?.team?.logoUrl) {
-      setLogoUrl(user.team.logoUrl);
+    const team = (user?.team as TeamWithAssets | undefined) ?? undefined;
+
+    if (team?.logoUrl) {
+      setLogoUrl(team.logoUrl);
     }
 
-    const teamWithJersey = user?.team as ({ jerseyUrl?: string } & typeof user.team) | undefined;
-    if (teamWithJersey?.jerseyUrl) {
-      setJerseyUrl(teamWithJersey.jerseyUrl);
+    if (team?.jerseyUrl) {
+      setJerseyUrl(team.jerseyUrl);
     }
   }, [user]);
 
