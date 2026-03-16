@@ -24,16 +24,11 @@ type TeamWithJersey = {
  *
  * NOTAS PARA PABLITO (Mongo)
  * --------------------------
- * Este archivo mantiene una demo visual del módulo Players.
- *
  * Regla visual actual:
- * - Si el club propio tiene jerseyUrl cargada => usar imagen real del club
- * - Si no hay jerseyUrl => usar la MISMA camiseta inline del dashboard
- * - Si el jugador es rival => NO usar la camiseta del club, usar fallback dashboard
- *
- * Importante:
- * - Se conserva la camiseta exacta del dashboard como fallback
- * - No volver a JerseyIcon acá para no perder consistencia visual
+ * - Si el club propio tiene jerseyUrl cargada => usar esa imagen
+ * - Si no tiene jerseyUrl => usar fallback público /jerseys/america.jpg
+ * - Si el jugador es rival => NO usar la camiseta del club
+ *   y volver a la camiseta dashboard SVG
  */
 
 const demoPlayers: Player[] = [
@@ -182,7 +177,7 @@ function ClubJerseyImage({
   jerseyUrl: string;
 }) {
   return (
-    <div className="relative flex items-center justify-center w-[5rem] h-24">
+    <div className="relative flex h-24 w-20 items-center justify-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={jerseyUrl}
@@ -191,7 +186,7 @@ function ClubJerseyImage({
       />
 
       <div className="absolute top-[38%] left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <span className="text-white font-black text-[1.55rem] leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]">
+        <span className="text-[1.55rem] font-black leading-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]">
           {typeof number === 'number' ? number : '?'}
         </span>
       </div>
@@ -220,7 +215,11 @@ function Jersey({
 export default function PlayerManager() {
   const { user } = useAuth();
   const team = (user?.team as TeamWithJersey | undefined) ?? undefined;
-  const clubJerseyUrl = team?.jerseyUrl ?? '';
+
+  // prioridad:
+  // 1) lo guardado en el club
+  // 2) fallback manual al archivo público
+  const clubJerseyUrl = team?.jerseyUrl || '/jerseys/america.jpg';
 
   return (
     <div className="space-y-4">
@@ -249,7 +248,7 @@ export default function PlayerManager() {
             />
 
             <div className="min-w-0">
-              <p className="text-lg font-bold text-white truncate">
+              <p className="truncate text-lg font-bold text-white">
                 {player.name}
               </p>
 
