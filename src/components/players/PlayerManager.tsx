@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronRight } from 'lucide-react';
-import PlayerJerseyBadge from '@/components/ui/PlayerJerseyBadge';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Player {
   id: string;
@@ -13,6 +13,10 @@ interface Player {
   isRival?: boolean;
 }
 
+type TeamWithJersey = {
+  jerseyUrl?: string;
+};
+
 /**
  * ============================================================
  * PLAYER MANAGER
@@ -20,18 +24,16 @@ interface Player {
  *
  * NOTAS PARA PABLITO (Mongo)
  * --------------------------
- * Demo visual del módulo Players.
+ * Este archivo mantiene una demo visual del módulo Players.
  *
- * Esta versión:
- * - usa PlayerJerseyBadge como fuente visual única de camiseta
- * - toma jerseyUrl del club para jugadores propios
- * - deja fallback genérico para rivales
+ * Regla visual actual:
+ * - Si el club propio tiene jerseyUrl cargada => usar imagen real del club
+ * - Si no hay jerseyUrl => usar la MISMA camiseta inline del dashboard
+ * - Si el jugador es rival => NO usar la camiseta del club, usar fallback dashboard
  *
- * Regla:
- * - propios => camiseta del club si existe
- * - rivales => NO usar camiseta del club
- *
- * No tocar lógica desde acá.
+ * Importante:
+ * - Se conserva la camiseta exacta del dashboard como fallback
+ * - No volver a JerseyIcon acá para no perder consistencia visual
  */
 
 const demoPlayers: Player[] = [
@@ -40,7 +42,186 @@ const demoPlayers: Player[] = [
   { id: '3', name: 'Jugador Demo 3', position: 'Alero', score: 8, isRival: false },
 ];
 
+function DashboardJersey({
+  number,
+  primary = '#ff6a00',
+  secondary = '#ff8b2b',
+  accent = '#2a1306',
+}: {
+  number?: number;
+  primary?: string;
+  secondary?: string;
+  accent?: string;
+}) {
+  const displayNumber = typeof number === 'number' ? number : '?';
+  const safeId = `jersey-${displayNumber}-${primary.replace('#', '')}`;
+
+  return (
+    <div className="flex items-center justify-center">
+      <svg
+        viewBox="0 0 180 210"
+        className="h-24 w-20 drop-shadow-[0_0_18px_rgba(255,106,0,0.24)]"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id={`${safeId}-grad`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={secondary} />
+            <stop offset="100%" stopColor={primary} />
+          </linearGradient>
+
+          <linearGradient id={`${safeId}-side`} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#ffd8b6" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+
+        <path
+          d="
+            M52 20
+            L72 10
+            L108 10
+            L128 20
+            L151 42
+            L139 70
+            L134 82
+            L134 184
+            Q134 195 123 195
+            L57 195
+            Q46 195 46 184
+            L46 82
+            L41 70
+            L29 42
+            Z
+          "
+          fill={`url(#${safeId}-grad)`}
+          stroke="#120c08"
+          strokeWidth="5"
+          strokeLinejoin="round"
+        />
+
+        <path
+          d="M73 12 Q90 34 107 12"
+          fill="none"
+          stroke={accent}
+          strokeWidth="8"
+          strokeLinecap="round"
+        />
+
+        <path
+          d="M52 20 L29 42 L41 70"
+          fill="none"
+          stroke={accent}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        <path
+          d="M128 20 L151 42 L139 70"
+          fill="none"
+          stroke={accent}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        <path
+          d="M49 66 L64 78 L64 192 L57 192 Q49 192 49 184 Z"
+          fill={`url(#${safeId}-side)`}
+          opacity="0.55"
+        />
+
+        <path
+          d="M131 66 L116 78 L116 192 L123 192 Q131 192 131 184 Z"
+          fill={`url(#${safeId}-side)`}
+          opacity="0.3"
+        />
+
+        <path
+          d="M64 78 Q90 92 116 78"
+          fill="none"
+          stroke="#ffcf9f"
+          strokeOpacity="0.25"
+          strokeWidth="3"
+        />
+
+        <text
+          x="90"
+          y="120"
+          textAnchor="middle"
+          fontSize="56"
+          fontWeight="900"
+          fill="#ffffff"
+          style={{
+            paintOrder: 'stroke',
+            stroke: '#7a3300',
+            strokeWidth: 3,
+            letterSpacing: '-2px',
+          }}
+        >
+          {displayNumber}
+        </text>
+
+        <path
+          d="M56 170 H124"
+          stroke="#ffd4aa"
+          strokeOpacity="0.35"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+      </svg>
+    </div>
+  );
+}
+
+function ClubJerseyImage({
+  number,
+  jerseyUrl,
+}: {
+  number?: number;
+  jerseyUrl: string;
+}) {
+  return (
+    <div className="relative flex items-center justify-center w-[5rem] h-24">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={jerseyUrl}
+        alt="Camiseta del club"
+        className="h-24 w-20 object-contain drop-shadow-[0_0_14px_rgba(0,0,0,0.35)]"
+      />
+
+      <div className="absolute top-[38%] left-1/2 -translate-x-1/2 -translate-y-1/2">
+        <span className="text-white font-black text-[1.55rem] leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]">
+          {typeof number === 'number' ? number : '?'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function Jersey({
+  number,
+  isRival = false,
+  clubJerseyUrl,
+}: {
+  number?: number;
+  isRival?: boolean;
+  clubJerseyUrl?: string;
+}) {
+  const useRealClubJersey = !isRival && !!clubJerseyUrl;
+
+  if (useRealClubJersey) {
+    return <ClubJerseyImage number={number} jerseyUrl={clubJerseyUrl!} />;
+  }
+
+  return <DashboardJersey number={number} />;
+}
+
 export default function PlayerManager() {
+  const { user } = useAuth();
+  const team = (user?.team as TeamWithJersey | undefined) ?? undefined;
+  const clubJerseyUrl = team?.jerseyUrl ?? '';
+
   return (
     <div className="space-y-4">
       {demoPlayers.map((player) => (
@@ -54,45 +235,41 @@ export default function PlayerManager() {
             rounded-[28px]
             border border-white/10
             bg-white/[0.03]
-            px-6 py-5
-            transition-all duration-200
-            hover:border-orange-400/25
-            hover:bg-white/[0.045]
-            hover:shadow-[0_10px_40px_rgba(0,0,0,0.35)]
+            p-5
+            transition-all
+            hover:bg-white/[0.05]
+            hover:-translate-y-0.5
           "
         >
-          <div className="flex items-center gap-5">
-            <PlayerJerseyBadge
+          <div className="flex items-center gap-4">
+            <Jersey
               number={player.number}
               isRival={player.isRival}
+              clubJerseyUrl={clubJerseyUrl}
             />
 
             <div className="min-w-0">
-              <p className="text-[2.15rem] font-bold leading-tight tracking-[-0.03em] text-white">
+              <p className="text-lg font-bold text-white truncate">
                 {player.name}
               </p>
 
-              <p className="mt-2 text-[1.15rem] font-semibold leading-none text-orange-400">
-                {player.position}
-              </p>
+              <p className="text-sm text-orange-400">{player.position}</p>
 
-              <p className="mt-2 text-[0.95rem] leading-none text-white/40">
+              <p className="text-sm text-white/40">
                 {player.team ?? 'Equipo no definido'}
               </p>
             </div>
           </div>
 
-          <div className="ml-8 flex items-center gap-5">
+          <div className="flex items-center gap-6">
             <div className="text-right">
-              <p className="text-[1.1rem] uppercase tracking-[0.22em] text-white/35">
+              <p className="text-2xl font-bold text-white">+{player.score}</p>
+              <p className="text-xs uppercase tracking-wider text-white/40">
                 Score
-              </p>
-              <p className="mt-1 text-[2.1rem] font-extrabold leading-none tracking-[-0.02em] text-white">
-                +{player.score}
               </p>
             </div>
 
-            <ChevronRight className="h-6 w-6 text-white/25 transition group-hover:text-white/55" />
+            <ChevronRight className="h-5 w-5 text-white/30 transition group-hover:text-white" />
           </div>
         </div>
       ))}
