@@ -25,10 +25,14 @@ type TeamWithJersey = {
  * NOTAS PARA PABLITO (Mongo)
  * --------------------------
  * Regla visual actual:
- * - Si el club propio tiene jerseyUrl cargada => usar esa imagen
- * - Si no tiene jerseyUrl => usar fallback público /jerseys/america.jpg
+ * - Si el club propio tiene jerseyUrl cargada => usar esa imagen real
+ * - Si no tiene jerseyUrl => usar la MISMA camiseta inline del dashboard
  * - Si el jugador es rival => NO usar la camiseta del club
  *   y volver a la camiseta dashboard SVG
+ *
+ * Ajuste visual actual:
+ * - la camiseta real del club NO lleva número superpuesto
+ *   porque la imagen ya puede traer numeración impresa y confundir.
  */
 
 const demoPlayers: Player[] = [
@@ -170,26 +174,18 @@ function DashboardJersey({
 }
 
 function ClubJerseyImage({
-  number,
   jerseyUrl,
 }: {
-  number?: number;
   jerseyUrl: string;
 }) {
   return (
-    <div className="relative flex h-24 w-20 items-center justify-center">
+    <div className="flex h-24 w-20 items-center justify-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={jerseyUrl}
         alt="Camiseta del club"
         className="h-24 w-20 object-contain drop-shadow-[0_0_14px_rgba(0,0,0,0.35)]"
       />
-
-      <div className="absolute top-[38%] left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <span className="text-[1.55rem] font-black leading-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]">
-          {typeof number === 'number' ? number : '?'}
-        </span>
-      </div>
     </div>
   );
 }
@@ -206,7 +202,7 @@ function Jersey({
   const useRealClubJersey = !isRival && !!clubJerseyUrl;
 
   if (useRealClubJersey) {
-    return <ClubJerseyImage number={number} jerseyUrl={clubJerseyUrl!} />;
+    return <ClubJerseyImage jerseyUrl={clubJerseyUrl!} />;
   }
 
   return <DashboardJersey number={number} />;
@@ -216,9 +212,6 @@ export default function PlayerManager() {
   const { user } = useAuth();
   const team = (user?.team as TeamWithJersey | undefined) ?? undefined;
 
-  // prioridad:
-  // 1) lo guardado en el club
-  // 2) fallback manual al archivo público
   const clubJerseyUrl = team?.jerseyUrl || '/jerseys/america.jpg';
 
   return (
