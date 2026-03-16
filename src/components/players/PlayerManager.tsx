@@ -18,17 +18,15 @@ interface Player {
  *
  * NOTAS PARA PABLITO (Mongo)
  * --------------------------
- * Este archivo mantiene una demo visual del módulo Players.
+ * Demo visual del módulo Players.
  *
- * Importante:
- * - La camiseta se copió EXACTAMENTE del dashboard page
- *   (src/app/panel/dashboard/page.tsx -> function Jersey)
- * - No usar JerseyIcon acá mientras el dashboard use su propia
- *   implementación inline, para evitar diferencias visuales.
+ * Esta versión hace solo ajustes finos de UI:
+ * - cards más compactas
+ * - mejor alineación visual
+ * - score menos invasivo
+ * - misma camiseta del dashboard
  *
- * Futuro ideal:
- * - extraer este Jersey a un componente compartido y hacer que
- *   dashboard + players usen la misma fuente visual.
+ * No tocar lógica desde acá.
  */
 
 const demoPlayers: Player[] = [
@@ -55,7 +53,7 @@ function Jersey({
     <div className="flex items-center justify-center">
       <svg
         viewBox="0 0 180 210"
-        className="h-24 w-20 drop-shadow-[0_0_18px_rgba(255,106,0,0.24)]"
+        className="h-[5.2rem] w-[4.3rem] drop-shadow-[0_0_18px_rgba(255,106,0,0.24)]"
         aria-hidden="true"
       >
         <defs>
@@ -183,37 +181,41 @@ export default function PlayerManager() {
             rounded-[28px]
             border border-white/10
             bg-white/[0.03]
-            p-5
-            transition-all
-            hover:bg-white/[0.05]
-            hover:-translate-y-0.5
+            px-6 py-5
+            transition-all duration-200
+            hover:border-orange-400/25
+            hover:bg-white/[0.045]
           "
         >
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-5">
             <Jersey number={player.number} />
 
             <div className="min-w-0">
-              <p className="text-lg font-bold text-white truncate">
+              <p className="text-[2rem] font-bold leading-none tracking-[-0.03em] text-white">
                 {player.name}
               </p>
 
-              <p className="text-sm text-orange-400">{player.position}</p>
+              <p className="mt-2 text-[1.15rem] font-semibold leading-none text-orange-400">
+                {player.position}
+              </p>
 
-              <p className="text-sm text-white/40">
+              <p className="mt-2 text-[0.95rem] leading-none text-white/40">
                 {player.team ?? 'Equipo no definido'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="ml-8 flex items-center gap-5">
             <div className="text-right">
-              <p className="text-2xl font-bold text-white">+{player.score}</p>
-              <p className="text-xs uppercase tracking-wider text-white/40">
+              <p className="text-[1.1rem] uppercase tracking-[0.22em] text-white/35">
                 Score
+              </p>
+              <p className="mt-1 text-[2.6rem] font-black leading-none tracking-[-0.04em] text-white">
+                +{player.score}
               </p>
             </div>
 
-            <ChevronRight className="h-5 w-5 text-white/30 transition group-hover:text-white" />
+            <ChevronRight className="h-6 w-6 text-white/25 transition group-hover:text-white/55" />
           </div>
         </div>
       ))}
