@@ -2,26 +2,22 @@
 
 /**
  * ============================================================
- * TOP PLAYERS — Dark System
+ * TOP PLAYERS — Dashboard Ranking
  * ============================================================
  *
- * NOTAS PARA PABLITO
- * ------------------
- * Este componente conserva la lógica real:
- * - usa /api/stats/top-players?coachId=
- * - usa user._id desde useAuth()
+ * NOTAS PARA PABLITO (Mongo)
+ * --------------------------
+ * Este componente:
  *
- * Se rehace solo la UI para que acompañe al sistema dark.
+ * - consume /api/stats/top-players
+ * - usa coachId del usuario
  *
- * Futuro:
- * - sumar tendencia (+/-)
- * - sumar foto/avatar
- * - sumar comparación entre últimos partidos
+ * Solo se rehizo UI.
  */
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import JerseyIcon from '@/components/ui/JerseyIcon';
+import PlayerJerseyBadge from '@/components/ui/PlayerJerseyBadge';
 import Link from 'next/link';
 import { Trophy, ChevronRight } from 'lucide-react';
 
@@ -76,13 +72,7 @@ export default function TopPlayers() {
       if (!user?._id) return;
 
       try {
-        setLoading(true);
         const response = await fetch(`/api/stats/top-players?coachId=${user._id}`);
-
-        if (!response.ok) {
-          throw new Error('No se pudieron cargar los mejores jugadores.');
-        }
-
         const { data } = await response.json();
         setTopPlayers(data);
       } catch (err) {
@@ -92,49 +82,18 @@ export default function TopPlayers() {
       }
     }
 
-    if (user?._id) {
-      fetchTopPlayers();
-    }
+    fetchTopPlayers();
   }, [user]);
 
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5 animate-pulse"
-          >
-            <div className="h-5 w-16 rounded bg-white/10" />
-            <div className="mt-5 flex items-center gap-4">
-              <div className="h-20 w-20 rounded-2xl bg-white/10" />
-              <div className="flex-1">
-                <div className="h-5 w-32 rounded bg-white/10" />
-                <div className="mt-3 h-4 w-20 rounded bg-white/10" />
-              </div>
-            </div>
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <div className="h-16 rounded-2xl bg-white/10" />
-              <div className="h-16 rounded-2xl bg-white/10" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
+  if (loading) return null;
 
   if (topPlayers.length === 0) {
     return (
       <div className="rounded-[28px] border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.04] ring-1 ring-white/10">
-          <Trophy className="h-6 w-6 text-orange-300" />
-        </div>
+        <Trophy className="mx-auto h-8 w-8 text-orange-400" />
         <h4 className="mt-4 text-lg font-semibold text-white">
-          Todavía no hay ranking disponible
+          Todavía no hay ranking
         </h4>
-        <p className="mt-2 text-sm text-white/50">
-          Cargá más estadísticas o partidos para empezar a destacar jugadores.
-        </p>
       </div>
     );
   }
@@ -161,12 +120,7 @@ export default function TopPlayers() {
             </div>
 
             <div className="mt-5 flex items-center gap-4">
-              <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/[0.04] ring-1 ring-white/8">
-                <JerseyIcon
-                  number={player.dorsal}
-                  className="h-16 w-16 flex-shrink-0"
-                />
-              </div>
+              <PlayerJerseyBadge number={player.dorsal} />
 
               <div className="min-w-0">
                 <p className="truncate text-lg font-bold text-white">
@@ -179,14 +133,8 @@ export default function TopPlayers() {
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3">
-              <StatCell
-                label="VAL"
-                value={player.avgGameScore.toFixed(1)}
-              />
-              <StatCell
-                label="PTS"
-                value={player.avgPoints.toFixed(1)}
-              />
+              <StatCell label="VAL" value={player.avgGameScore.toFixed(1)} />
+              <StatCell label="PTS" value={player.avgPoints.toFixed(1)} />
             </div>
           </Link>
         );
