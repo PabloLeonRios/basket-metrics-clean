@@ -7,32 +7,53 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   inputSize?: 'sm' | 'md' | 'lg';
 }
 
+/**
+ * ============================================================
+ * INPUT UI — Basket Metrics
+ * ============================================================
+ *
+ * NOTAS PARA PABLITO
+ * ------------------
+ * Objetivo:
+ * - Mantener compatibilidad con todos los formularios actuales
+ * - Permitir que cada pantalla pueda customizar visualmente el input con className
+ *
+ * Regla importante:
+ * - className debe poder sobrescribir/redondear/oscurecer estilos base
+ * - no romper formularios viejos que usen este Input sin className
+ *
+ * Mejora UI 2026:
+ * - base más neutra y compatible con dark system
+ * - focus naranja en vez de azul
+ * - mejor transición visual
+ */
+
 const Input: React.FC<InputProps> = ({
   error = false,
-  inputSize = 'md', // Renamed from size
-  className,
+  inputSize = 'md',
+  className = '',
   ...props
 }) => {
   const baseStyles =
-    'w-full rounded-lg border focus:outline-none transition-colors duration-150 ease-in-out';
+    'w-full border text-white placeholder:text-white/25 outline-none transition-all duration-200';
 
   const sizeStyles = {
-    sm: 'px-2 py-1 text-sm',
-    md: 'px-3 py-2 text-base',
-    lg: 'px-4 py-3 text-lg',
+    sm: 'px-3 py-2 text-sm rounded-xl',
+    md: 'px-4 py-3 text-base rounded-2xl',
+    lg: 'px-4 py-3.5 text-lg rounded-2xl',
   };
 
-  const errorStyles = error
-    ? 'border-red-500 focus:ring-2 focus:ring-red-500'
-    : 'border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent';
+  const defaultVisualStyles = error
+    ? 'border-red-500/60 bg-red-500/5 focus:border-red-400 focus:ring-2 focus:ring-red-500/20'
+    : 'border-white/10 bg-white/[0.04] focus:border-orange-400/30 focus:ring-2 focus:ring-orange-500/10';
 
   const disabledStyles = props.disabled
-    ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed'
-    : 'bg-white dark:bg-gray-800';
+    ? 'cursor-not-allowed opacity-60'
+    : '';
 
   return (
     <input
-      className={`${baseStyles} ${sizeStyles[inputSize]} ${errorStyles} ${disabledStyles} ${className || ''}`}
+      className={`${baseStyles} ${sizeStyles[inputSize]} ${defaultVisualStyles} ${disabledStyles} ${className}`.trim()}
       {...props}
     />
   );
