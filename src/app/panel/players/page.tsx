@@ -1,4 +1,5 @@
 import PlayerManager from '@/components/players/PlayerManager';
+import CreatePlayerForm from '@/components/players/CreatePlayerForm';
 
 /**
  * ============================
@@ -9,13 +10,15 @@ import PlayerManager from '@/components/players/PlayerManager';
  * Objetivo actual:
  * - Esta página sigue siendo solo un contenedor visual del módulo.
  * - NO contiene lógica de negocio ni acceso a backend.
- * - Toda la gestión real sigue delegada en <PlayerManager />.
+ * - La gestión visual se delega en:
+ *   - <CreatePlayerForm />
+ *   - <PlayerManager />
  *
  * Migración futura a Mongo:
  * - Si más adelante Players necesita SSR, filtros por URL o carga desde backend,
  *   esta página puede transformarse en:
  *   1) server component que consulte datos, o
- *   2) wrapper que pase props al manager.
+ *   2) wrapper que pase props a manager / form.
  *
  * Por ahora:
  * - Se mantiene limpia, estable y orientada 100% a layout/UI.
@@ -26,6 +29,7 @@ import PlayerManager from '@/components/players/PlayerManager';
  * - mejor jerarquía visual
  * - tarjetas laterales más limpias
  * - mejor transición entre encabezado y listado
+ * - se integra el alta manual para poder probar el nuevo formulario
  */
 
 export default function PlayersPage() {
@@ -92,6 +96,10 @@ export default function PlayersPage() {
         </section>
 
         <section className="mt-5">
+          <CreatePlayerForm />
+        </section>
+
+        <section className="mt-6">
           <div className="mb-4 flex items-end justify-between gap-4">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-300/70">
@@ -102,7 +110,7 @@ export default function PlayersPage() {
               </h2>
             </div>
 
-            <div className="hidden md:block text-right">
+            <div className="hidden text-right md:block">
               <p className="text-xs uppercase tracking-[0.18em] text-white/25">
                 Vista actual
               </p>
