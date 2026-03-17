@@ -2,6 +2,7 @@
 
 import { ChevronRight } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useState } from 'react';
 
 interface Player {
   id: string;
@@ -26,7 +27,7 @@ type TeamWithJersey = {
  * --------------------------
  * Regla visual actual:
  * - Si el club propio tiene jerseyUrl cargada => usar esa imagen real
- * - Si no tiene jerseyUrl => usar la MISMA camiseta inline del dashboard
+ * - Si no tiene jerseyUrl => usar fallback público /america.jpg
  * - Si el jugador es rival => NO usar la camiseta del club
  *   y volver a la camiseta dashboard SVG
  *
@@ -178,13 +179,16 @@ function ClubJerseyImage({
 }: {
   jerseyUrl: string;
 }) {
+  const [src, setSrc] = useState(jerseyUrl || '/america.jpg');
+
   return (
     <div className="flex h-24 w-20 items-center justify-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={jerseyUrl}
+        src={src}
         alt="Camiseta del club"
         className="h-24 w-20 object-contain drop-shadow-[0_0_14px_rgba(0,0,0,0.35)]"
+        onError={() => setSrc('/america.jpg')}
       />
     </div>
   );
@@ -212,7 +216,8 @@ export default function PlayerManager() {
   const { user } = useAuth();
   const team = (user?.team as TeamWithJersey | undefined) ?? undefined;
 
-  const clubJerseyUrl = team?.jerseyUrl || '/jerseys/america.jpg';
+  // Fallback nuevo correcto: la imagen ahora está en /public/america.jpg
+  const clubJerseyUrl = team?.jerseyUrl || '/america.jpg';
 
   return (
     <div className="space-y-4">
