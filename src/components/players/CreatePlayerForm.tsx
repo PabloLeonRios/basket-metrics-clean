@@ -8,11 +8,31 @@ import Input from '@/components/ui/Input';
 import Checkbox from '@/components/ui/Checkbox';
 import { toast } from 'react-toastify';
 
+/**
+ * ============================================================
+ * CREATE PLAYER FORM
+ * ============================================================
+ *
+ * NOTAS PARA PABLITO (Mongo / Backend futuro)
+ *
+ * Lógica actual:
+ * - toma usuario desde useAuth()
+ * - arma payload local
+ * - POST /api/players
+ * - redirige a /panel/players si sale OK
+ *
+ * Mejora UI 2026:
+ * - SOLO cambia presentación visual
+ * - NO se toca submit
+ * - NO se toca endpoint
+ * - NO se toca estructura del payload
+ * - Se alinea estética con Players / Dashboard / Panel
+ */
+
 export default function CreatePlayerForm() {
   const { user } = useAuth();
   const router = useRouter();
 
-  // Form state
   const [name, setName] = useState('');
   const [dorsal, setDorsal] = useState('');
   const [position, setPosition] = useState('');
@@ -21,7 +41,7 @@ export default function CreatePlayerForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const labelStyles =
-    'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1';
+    'mb-2 block text-sm font-medium text-white/75';
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -39,6 +59,7 @@ export default function CreatePlayerForm() {
         coach: user._id,
         isRival,
       };
+
       const response = await fetch('/api/players', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -51,8 +72,6 @@ export default function CreatePlayerForm() {
       }
 
       toast.success('Jugador creado con éxito. Redirigiendo a la lista...');
-
-      // Redirect to the player list page
       router.push('/panel/players');
     } catch (err) {
       toast.error(
@@ -64,89 +83,142 @@ export default function CreatePlayerForm() {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 p-4 sm:p-6 rounded-xl shadow-md">
-      <h2 className="text-xl font-bold mb-4">Añadir Nuevo Jugador</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.03)_100%)] p-[1px] shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
+      <div className="relative rounded-[29px] bg-[#0f1117]/95 px-5 py-6 md:px-6 md:py-7">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute left-0 top-0 h-28 w-28 rounded-full bg-orange-500/8 blur-3xl" />
+          <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-orange-400/8 blur-2xl" />
+        </div>
+
+        <div className="relative mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <label htmlFor="name" className={labelStyles}>
-              Nombre del Jugador
-            </label>
-            <Input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              placeholder="Ej: Michael Jordan"
-            />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-300/75">
+              Alta manual
+            </p>
+            <h2 className="mt-1 text-2xl font-black tracking-tight text-white">
+              Añadir nuevo jugador
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-white/45">
+              Cargá la información base del jugador para incorporarlo al roster
+              y dejarlo disponible en el módulo de seguimiento.
+            </p>
           </div>
-          <div>
-            <label htmlFor="dorsal" className={labelStyles}>
-              Dorsal
-            </label>
-            <Input
-              id="dorsal"
-              type="number"
-              value={dorsal}
-              onChange={(e) => setDorsal(e.target.value)}
-              placeholder="Ej: 23"
-            />
-          </div>
-          <div>
-            <label htmlFor="position" className={labelStyles}>
-              Posición
-            </label>
-            <Input
-              id="position"
-              type="text"
-              list="position-options"
-              value={position}
-              onChange={(e) => setPosition(e.target.value)}
-              placeholder="Ej: Escolta"
-            />
-            <datalist id="position-options">
-              <option value="Base" />
-              <option value="Escolta" />
-              <option value="Alero" />
-              <option value="Ala-Pívot" />
-              <option value="Pívot" />
-            </datalist>
-          </div>
-          <div>
-            <label htmlFor="team" className={labelStyles}>
-              Equipo (Opcional)
-            </label>
-            <Input
-              id="team"
-              type="text"
-              value={team}
-              onChange={(e) => setTeam(e.target.value)}
-              placeholder={
-                isRival
-                  ? 'Ej: Equipo Rival'
-                  : user?.team?.name || 'Ej: Mi Equipo'
-              }
-            />
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/55">
+            Formulario de carga inicial
           </div>
         </div>
-        <div className="py-2">
-          <Checkbox
-            label="Es jugador rival"
-            checked={isRival}
-            onChange={(e) => setIsRival(e.target.checked)}
-          />
-        </div>
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          variant="primary"
-          size="md"
-          className="w-full sm:w-auto"
-        >
-          {isSubmitting ? 'Creando...' : 'Guardar Jugador'}
-        </Button>
-      </form>
+
+        <form onSubmit={handleSubmit} className="relative space-y-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <label htmlFor="name" className={labelStyles}>
+                Nombre del jugador
+              </label>
+              <Input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                placeholder="Ej: Michael Jordan"
+                className="rounded-2xl border-white/10 bg-white/[0.04] text-white placeholder:text-white/25"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="dorsal" className={labelStyles}>
+                Dorsal
+              </label>
+              <Input
+                id="dorsal"
+                type="number"
+                value={dorsal}
+                onChange={(e) => setDorsal(e.target.value)}
+                placeholder="Ej: 23"
+                className="rounded-2xl border-white/10 bg-white/[0.04] text-white placeholder:text-white/25"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="position" className={labelStyles}>
+                Posición
+              </label>
+              <Input
+                id="position"
+                type="text"
+                list="position-options"
+                value={position}
+                onChange={(e) => setPosition(e.target.value)}
+                placeholder="Ej: Escolta"
+                className="rounded-2xl border-white/10 bg-white/[0.04] text-white placeholder:text-white/25"
+              />
+              <datalist id="position-options">
+                <option value="Base" />
+                <option value="Escolta" />
+                <option value="Alero" />
+                <option value="Ala-Pívot" />
+                <option value="Pívot" />
+              </datalist>
+            </div>
+
+            <div>
+              <label htmlFor="team" className={labelStyles}>
+                Equipo (opcional)
+              </label>
+              <Input
+                id="team"
+                type="text"
+                value={team}
+                onChange={(e) => setTeam(e.target.value)}
+                placeholder={
+                  isRival
+                    ? 'Ej: Equipo Rival'
+                    : user?.team?.name || 'Ej: Mi Equipo'
+                }
+                className="rounded-2xl border-white/10 bg-white/[0.04] text-white placeholder:text-white/25"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-white/10 bg-white/[0.03] px-4 py-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.20em] text-orange-300/75">
+                  Configuración
+                </p>
+                <p className="mt-1 text-sm text-white/50">
+                  Marcá esta opción si el jugador pertenece al equipo rival.
+                </p>
+              </div>
+
+              <div className="shrink-0">
+                <Checkbox
+                  label="Es jugador rival"
+                  checked={isRival}
+                  onChange={(e) => setIsRival(e.target.checked)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-white/35">
+              Al guardar, el jugador quedará disponible en el listado del plantel.
+            </p>
+
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              variant="primary"
+              size="md"
+              className="w-full rounded-2xl bg-orange-500 px-6 py-3.5 font-semibold text-white transition-all duration-300 hover:bg-orange-400 hover:shadow-[0_16px_35px_rgba(249,115,22,0.28)] sm:w-auto"
+            >
+              {isSubmitting ? 'Creando...' : 'Guardar jugador'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
