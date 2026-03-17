@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 /**
  * =========================================
@@ -31,13 +31,24 @@
  * - reemplazar mocks por fetch reales
  * - mantener esta misma UI
  * - conservar links actuales del dashboard
+ *
+ * Ajuste visual actual:
+ * - si el club tiene jerseyUrl, usar la camiseta real
+ * - si no tiene jerseyUrl, usar fallback /america.jpg
+ * - no superponer número sobre la camiseta real
  */
 
-import Link from "next/link";
-import { Activity, ArrowRight, ClipboardList, Users } from "lucide-react";
+import Link from 'next/link';
+import { useState } from 'react';
+import { Activity, ArrowRight, ClipboardList, Users } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+
+type TeamWithJersey = {
+  jerseyUrl?: string;
+};
 
 function shellClassName() {
-  return "rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1624] to-[#070e18]";
+  return 'rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1624] to-[#070e18]';
 }
 
 function KpiCard({
@@ -75,18 +86,18 @@ function KpiCard({
   );
 }
 
-function Jersey({
+function DashboardJersey({
   number,
-  primary = "#ff6a00",
-  secondary = "#ff8b2b",
-  accent = "#2a1306",
+  primary = '#ff6a00',
+  secondary = '#ff8b2b',
+  accent = '#2a1306',
 }: {
   number: number;
   primary?: string;
   secondary?: string;
   accent?: string;
 }) {
-  const safeId = `jersey-${number}-${primary.replace("#", "")}`;
+  const safeId = `jersey-${number}-${primary.replace('#', '')}`;
 
   return (
     <div className="flex items-center justify-center">
@@ -185,10 +196,10 @@ function Jersey({
           fontWeight="900"
           fill="#ffffff"
           style={{
-            paintOrder: "stroke",
-            stroke: "#7a3300",
+            paintOrder: 'stroke',
+            stroke: '#7a3300',
             strokeWidth: 3,
-            letterSpacing: "-2px",
+            letterSpacing: '-2px',
           }}
         >
           {number}
@@ -206,23 +217,51 @@ function Jersey({
   );
 }
 
+function ClubJerseyImage({
+  jerseyUrl,
+}: {
+  jerseyUrl: string;
+}) {
+  const [src, setSrc] = useState(jerseyUrl || '/america.jpg');
+
+  return (
+    <div className="flex h-24 w-20 items-center justify-center">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt="Camiseta del club"
+        className="h-24 w-20 object-contain drop-shadow-[0_0_14px_rgba(0,0,0,0.35)]"
+        onError={() => setSrc('/america.jpg')}
+      />
+    </div>
+  );
+}
+
 function TopPlayerCard({
   name,
   number,
   efficiency,
   href,
+  clubJerseyUrl,
 }: {
   name: string;
   number: number;
   efficiency: number;
   href: string;
+  clubJerseyUrl?: string;
 }) {
+  const useRealClubJersey = !!clubJerseyUrl;
+
   return (
     <Link
       href={href}
       className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-orange-400/40 hover:bg-white/[0.05]"
     >
-      <Jersey number={number} />
+      {useRealClubJersey ? (
+        <ClubJerseyImage jerseyUrl={clubJerseyUrl!} />
+      ) : (
+        <DashboardJersey number={number} />
+      )}
 
       <div className="min-w-0 flex-1">
         <span className="block text-xl font-bold leading-tight text-white">
@@ -242,6 +281,10 @@ function TopPlayerCard({
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const team = (user?.team as TeamWithJersey | undefined) ?? undefined;
+  const clubJerseyUrl = team?.jerseyUrl || '/america.jpg';
+
   const panelStats = {
     players: 12,
     sessions: 4,
@@ -249,9 +292,9 @@ export default function DashboardPage() {
   };
 
   const topPlayers = [
-    { id: "1", name: "Juan Pérez", number: 23, efficiency: 12 },
-    { id: "2", name: "Lucas Díaz", number: 7, efficiency: 9 },
-    { id: "3", name: "Martín Gómez", number: 11, efficiency: 8 },
+    { id: '1', name: 'Juan Pérez', number: 23, efficiency: 12 },
+    { id: '2', name: 'Lucas Díaz', number: 7, efficiency: 9 },
+    { id: '3', name: 'Martín Gómez', number: 11, efficiency: 8 },
   ];
 
   return (
@@ -347,6 +390,7 @@ export default function DashboardPage() {
               number={player.number}
               efficiency={player.efficiency}
               href={`/panel/players/${player.id}`}
+              clubJerseyUrl={clubJerseyUrl}
             />
           ))}
         </div>
