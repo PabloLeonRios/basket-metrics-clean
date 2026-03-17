@@ -36,6 +36,13 @@
  * - si el club tiene jerseyUrl, usar la camiseta real
  * - si no tiene jerseyUrl, usar fallback /america.jpg
  * - no superponer número sobre la camiseta real
+ *
+ * Mejora UI 2026:
+ * - hero más compacto
+ * - top rendimiento más visible y más arriba
+ * - cards con menos aire y más jerarquía
+ * - score con más protagonismo
+ * - mismo comportamiento funcional
  */
 
 import Link from 'next/link';
@@ -48,7 +55,7 @@ type TeamWithJersey = {
 };
 
 function shellClassName() {
-  return 'rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1624] to-[#070e18]';
+  return 'rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,#0b1624_0%,#070e18_100%)] shadow-[0_24px_70px_rgba(0,0,0,0.30)]';
 }
 
 function KpiCard({
@@ -67,21 +74,38 @@ function KpiCard({
   return (
     <Link
       href={href}
-      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-orange-400/40 hover:bg-white/[0.05]"
+      className="
+        group relative overflow-hidden rounded-[26px] border border-white/10
+        bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.03)_100%)]
+        p-[1px] transition-all duration-300
+        hover:-translate-y-1 hover:border-orange-400/25 hover:shadow-[0_18px_50px_rgba(0,0,0,0.28)]
+      "
     >
-      <Icon className="h-6 w-6 text-orange-400" />
+      <div className="relative rounded-[25px] bg-[#0f1117]/94 px-5 py-5">
+        <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+          <div className="absolute -right-6 top-0 h-20 w-20 rounded-full bg-orange-500/10 blur-2xl" />
+        </div>
 
-      <p className="mt-4 text-xs uppercase tracking-widest text-slate-400">
-        {title}
-      </p>
+        <div className="relative flex items-start justify-between gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-orange-400/20 bg-orange-500/10">
+            <Icon className="h-5 w-5 text-orange-300" />
+          </div>
 
-      <p className="mt-2 text-3xl font-bold text-white">{value}</p>
+          <span className="text-white/20 transition group-hover:text-orange-300/80">
+            →
+          </span>
+        </div>
 
-      <p className="mt-2 text-xs text-slate-400">{helper}</p>
+        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
+          {title}
+        </p>
 
-      <span className="absolute bottom-4 right-4 text-slate-500 opacity-0 transition group-hover:opacity-100">
-        →
-      </span>
+        <p className="mt-2 text-3xl font-black tracking-tight text-white">
+          {value}
+        </p>
+
+        <p className="mt-2 text-sm leading-6 text-white/40">{helper}</p>
+      </div>
     </Link>
   );
 }
@@ -103,7 +127,7 @@ function DashboardJersey({
     <div className="flex items-center justify-center">
       <svg
         viewBox="0 0 180 210"
-        className="h-24 w-20 drop-shadow-[0_0_18px_rgba(255,106,0,0.24)]"
+        className="h-28 w-24 drop-shadow-[0_0_24px_rgba(255,106,0,0.28)] transition-transform duration-300 group-hover:scale-[1.05]"
         aria-hidden="true"
       >
         <defs>
@@ -217,20 +241,16 @@ function DashboardJersey({
   );
 }
 
-function ClubJerseyImage({
-  jerseyUrl,
-}: {
-  jerseyUrl: string;
-}) {
+function ClubJerseyImage({ jerseyUrl }: { jerseyUrl: string }) {
   const [src, setSrc] = useState(jerseyUrl || '/america.jpg');
 
   return (
-    <div className="flex h-24 w-20 items-center justify-center">
+    <div className="flex h-28 w-24 items-center justify-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt="Camiseta del club"
-        className="h-24 w-20 object-contain drop-shadow-[0_0_14px_rgba(0,0,0,0.35)]"
+        className="h-28 w-24 object-contain drop-shadow-[0_0_18px_rgba(0,0,0,0.38)] transition-transform duration-300 group-hover:scale-[1.05]"
         onError={() => setSrc('/america.jpg')}
       />
     </div>
@@ -255,26 +275,49 @@ function TopPlayerCard({
   return (
     <Link
       href={href}
-      className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-orange-400/40 hover:bg-white/[0.05]"
+      className="
+        group relative overflow-hidden rounded-[28px] border border-white/10
+        bg-[linear-gradient(180deg,rgba(255,255,255,0.07)_0%,rgba(255,255,255,0.03)_100%)]
+        p-[1px] transition-all duration-300
+        hover:-translate-y-1 hover:border-orange-400/25 hover:shadow-[0_20px_60px_rgba(0,0,0,0.32)]
+      "
     >
-      {useRealClubJersey ? (
-        <ClubJerseyImage jerseyUrl={clubJerseyUrl!} />
-      ) : (
-        <DashboardJersey number={number} />
-      )}
+      <div className="relative flex items-center gap-4 rounded-[27px] bg-[#0f1117]/95 px-5 py-5">
+        <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+          <div className="absolute -left-6 top-1/2 h-24 w-24 -translate-y-1/2 rounded-full bg-orange-500/10 blur-3xl" />
+          <div className="absolute right-0 top-0 h-16 w-16 rounded-full bg-orange-400/8 blur-2xl" />
+        </div>
 
-      <div className="min-w-0 flex-1">
-        <span className="block text-xl font-bold leading-tight text-white">
-          {name}
-        </span>
+        <div className="relative flex h-24 w-24 items-center justify-center rounded-[24px] border border-white/8 bg-white/[0.04] shadow-inner shadow-black/20">
+          {useRealClubJersey ? (
+            <ClubJerseyImage jerseyUrl={clubJerseyUrl!} />
+          ) : (
+            <DashboardJersey number={number} />
+          )}
+        </div>
 
-        <span className="mt-1 block text-sm text-slate-400">Eficiencia</span>
-      </div>
+        <div className="relative min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-300/70">
+            Top rendimiento
+          </p>
 
-      <div className="ml-auto text-right">
-        <span className="text-4xl font-black tracking-tight text-orange-400">
-          +{efficiency}
-        </span>
+          <span className="mt-1 block truncate text-xl font-black leading-tight tracking-tight text-white">
+            {name}
+          </span>
+
+          <span className="mt-2 block text-sm text-white/40">
+            Eficiencia destacada del equipo
+          </span>
+        </div>
+
+        <div className="relative ml-auto text-right">
+          <span className="inline-flex min-w-[88px] items-center justify-center rounded-2xl border border-orange-400/20 bg-orange-500/10 px-4 py-2 text-4xl font-black tracking-tight text-orange-300 shadow-[0_12px_30px_rgba(255,106,0,0.10)]">
+            +{efficiency}
+          </span>
+          <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/35">
+            Score
+          </p>
+        </div>
       </div>
     </Link>
   );
@@ -298,27 +341,26 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <section
-        className={`${shellClassName()} overflow-hidden px-8 py-3 md:px-10 md:py-4`}
+        className={`${shellClassName()} overflow-hidden px-6 py-5 md:px-8 md:py-6`}
       >
-        <div className="grid gap-4 xl:grid-cols-[1.72fr_0.28fr]">
+        <div className="grid gap-4 xl:grid-cols-[1.72fr_0.72fr]">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-orange-300">
+            <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-500/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-300">
               Basket Metrics para clubes
             </div>
 
-            <h1 className="mt-4 max-w-4xl text-3xl font-bold tracking-tight text-white md:text-4xl">
-              Rendimiento y análisis del equipo en una sola plataforma
+            <h1 className="mt-4 max-w-4xl text-3xl font-black tracking-tight text-white md:text-[2.7rem] md:leading-[1.05]">
+              Rendimiento, sesiones y análisis del equipo en una sola vista
             </h1>
 
-            <p className="mt-3 max-w-3xl text-base leading-8 text-slate-400">
-              Plataforma pensada para entrenadores y staff que necesitan
-              visualizar rápido el estado del equipo y tomar decisiones basadas
-              en datos.
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/45 md:text-base">
+              Plataforma pensada para entrenadores y staff que necesitan ver
+              rápido el estado del equipo y tomar decisiones basadas en datos.
             </p>
 
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-5 flex flex-wrap gap-3">
               <Link
                 href="/panel/players"
                 className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-400"
@@ -336,8 +378,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+          <div className="rounded-[26px] border border-white/10 bg-white/[0.03] p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/35">
               Panel principal
             </p>
 
@@ -346,15 +388,15 @@ export default function DashboardPage() {
             </h3>
 
             <div className="mt-4 space-y-2.5">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/65">
                 Seguimiento de jugadores
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/65">
                 Análisis de sesiones
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/65">
                 Datos para entrenadores
               </div>
             </div>
@@ -365,11 +407,11 @@ export default function DashboardPage() {
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-300/70">
               Rendimiento individual
             </p>
 
-            <h2 className="mt-1 text-2xl font-bold text-white">
+            <h2 className="mt-1 text-2xl font-black tracking-tight text-white md:text-[2rem]">
               Top rendimiento
             </h2>
           </div>
@@ -396,7 +438,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <KpiCard
           title="Jugadores registrados"
           value={String(panelStats.players)}
