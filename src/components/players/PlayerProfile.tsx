@@ -39,6 +39,27 @@ interface Shot {
   made: boolean;
 }
 
+/**
+ * ============================================================
+ * PLAYER PROFILE
+ * ============================================================
+ *
+ * NOTAS PARA PABLITO (Mongo)
+ * --------------------------
+ * Esta pantalla mantiene intacta la lógica actual:
+ * - fetch /api/players/:id/stats
+ * - fetch /api/game-events?playerId=
+ * - exportación a Excel y PDF
+ * - paginado local
+ *
+ * Mejora UI 2026:
+ * - SOLO se mejora presentación visual
+ * - No se toca estructura de datos ni endpoints
+ * - Se refuerza estética dark + naranja tipo producto premium
+ * - Las métricas principales pasan a tener más jerarquía
+ * - La tabla gana legibilidad visual sin alterar contenido
+ */
+
 export default function PlayerProfile({ playerId }: { playerId: string }) {
   const [averages, setAverages] = useState<CareerAverages | null>(null);
   const [games, setGames] = useState<GameStats[]>([]);
@@ -129,17 +150,21 @@ export default function PlayerProfile({ playerId }: { playerId: string }) {
           fetch(`/api/game-events?playerId=${playerId}`),
         ]);
 
-        if (!statsResponse.ok)
+        if (!statsResponse.ok) {
           throw new Error(
             'No se pudieron cargar las estadísticas del jugador.',
           );
+        }
+
         const { data: statsData } = await statsResponse.json();
         setAverages(statsData.careerAverages);
         setGames(statsData.gameByGameStats);
         setGlobalValue(statsData.globalValue);
 
-        if (!eventsResponse.ok)
+        if (!eventsResponse.ok) {
           throw new Error('No se pudieron cargar los eventos de tiro.');
+        }
+
         const { data: eventsData } = await eventsResponse.json();
         const shots = eventsData
           .filter(
@@ -153,6 +178,7 @@ export default function PlayerProfile({ playerId }: { playerId: string }) {
             y: event.details.y as number,
             made: event.details.made as boolean,
           }));
+
         setAllShots(shots);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -160,30 +186,82 @@ export default function PlayerProfile({ playerId }: { playerId: string }) {
         setLoading(false);
       }
     }
+
     fetchStats();
   }, [playerId]);
 
   const StatCard = ({
     title,
     value,
-    className = '',
+    featured = false,
   }: {
     title: string;
     value: string | number;
-    className?: string;
+    featured?: boolean;
   }) => (
     <div
-      className={`bg-white dark:bg-gray-900 p-4 rounded-xl shadow-md text-center ${className}`}
+      className={`
+        group relative overflow-hidden rounded-[28px] border p-[1px] transition-all duration-300
+        ${
+          featured
+            ? 'border-orange-400/20 bg-[linear-gradient(180deg,rgba(255,140,66,0.18)_0%,rgba(255,255,255,0.04)_100%)] shadow-[0_18px_50px_rgba(255,106,0,0.10)]'
+            : 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.03)_100%)]'
+        }
+      `}
     >
-      <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
-      <p className="text-3xl font-bold text-gray-900 dark:text-gray-50">
-        {value}
-      </p>
+      <div
+        className={`
+          relative h-full rounded-[27px] px-4 py-5 md:px-5 md:py-6
+          ${featured ? 'bg-[#16110d]/95' : 'bg-[#0f1117]/92'}
+        `}
+      >
+        <div className="pointer-events-none absolute inset-0 opacity-100">
+          {featured ? (
+            <>
+              <div className="absolute -left-6 top-1/2 h-24 w-24 -translate-y-1/2 rounded-full bg-orange-500/12 blur-3xl" />
+              <div className="absolute right-0 top-0 h-16 w-16 rounded-full bg-orange-400/10 blur-2xl" />
+            </>
+          ) : (
+            <div className="absolute right-0 top-0 h-14 w-14 rounded-full bg-white/5 blur-2xl" />
+          )}
+        </div>
+
+        <p
+          className={`relative text-[11px] font-semibold uppercase tracking-[0.24em] ${
+            featured ? 'text-orange-300/80' : 'text-white/45'
+          }`}
+        >
+          {title}
+        </p>
+
+        <p
+          className={`relative mt-3 tracking-tight ${
+            featured
+              ? 'text-4xl font-black text-white md:text-5xl'
+              : 'text-3xl font-extrabold text-white'
+          }`}
+        >
+          {value}
+        </p>
+      </div>
     </div>
   );
 
-  if (loading) return <p>Cargando perfil...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
+  if (loading) {
+    return (
+      <div className="rounded-[28px] border border-white/10 bg-[#0f1117]/90 px-6 py-10 text-center text-white/70 shadow-[0_16px_50px_rgba(0,0,0,0.24)]">
+        Cargando perfil...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-[28px] border border-red-500/20 bg-red-500/10 px-6 py-10 text-center text-red-300 shadow-[0_16px_50px_rgba(0,0,0,0.24)]">
+        {error}
+      </div>
+    );
+  }
 
   const pageSize = 10;
   const totalPages = Math.ceil(games.length / pageSize);
@@ -194,196 +272,242 @@ export default function PlayerProfile({ playerId }: { playerId: string }) {
 
   return (
     <div className="space-y-8">
-      {/* Tarjetas de Promedios */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <StatCard
-          title="Valor Global"
-          value={globalValue || '--'}
-          className="bg-blue-100 dark:bg-blue-900"
-        />
-        <StatCard title="Partidos Jugados" value={averages?.totalGames || 0} />
-        <StatCard
-          title="Puntos Por Partido"
-          value={averages?.avgPoints.toFixed(1) || '0.0'}
-        />
-        <StatCard
-          title="Valoración Promedio"
-          value={averages?.avgGameScore.toFixed(1) || '0.0'}
-        />
-        <StatCard
-          title="eFG% Promedio"
-          value={`${((averages?.avgEFG || 0) * 100).toFixed(1)}%`}
-        />
+      <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.03)_100%)] p-[1px] shadow-[0_24px_70px_rgba(0,0,0,0.30)]">
+        <div className="relative rounded-[31px] bg-[#0d1016]/95 px-5 py-6 md:px-6 md:py-7">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute left-0 top-0 h-32 w-32 rounded-full bg-orange-500/8 blur-3xl" />
+            <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-orange-400/8 blur-2xl" />
+          </div>
+
+          <div className="relative mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-orange-300/75">
+                Perfil de rendimiento
+              </p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-white md:text-3xl">
+                Resumen del jugador
+              </h2>
+              <p className="mt-1 text-sm text-white/45">
+                Promedios, evolución por partido y mapa de tiro consolidado.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+            <StatCard
+              title="Valor Global"
+              value={globalValue ?? '--'}
+              featured
+            />
+            <StatCard
+              title="Partidos Jugados"
+              value={averages?.totalGames || 0}
+            />
+            <StatCard
+              title="Puntos Por Partido"
+              value={averages?.avgPoints.toFixed(1) || '0.0'}
+            />
+            <StatCard
+              title="Valoración Promedio"
+              value={averages?.avgGameScore.toFixed(1) || '0.0'}
+            />
+            <StatCard
+              title="eFG% Promedio"
+              value={`${((averages?.avgEFG || 0) * 100).toFixed(1)}%`}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Tabla de Partidos */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
-          <div className="flex justify-between items-center p-4">
-            <h3 className="text-xl font-bold">Rendimiento Partido a Partido</h3>
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                onClick={exportToExcel}
-                className="flex items-center gap-2"
-              >
-                <ArrowDownTrayIcon className="w-4 h-4" />
-                Excel
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={exportToPDF}
-                className="flex items-center gap-2"
-              >
-                <ArrowDownTrayIcon className="w-4 h-4" />
-                PDF
-              </Button>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+      <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
+        <div className="xl:col-span-2">
+          <div className="overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.03)_100%)] p-[1px] shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
+            <div className="rounded-[29px] bg-[#0f1117]/95">
+              <div className="flex flex-col gap-4 border-b border-white/8 px-5 py-5 md:flex-row md:items-center md:justify-between md:px-6">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-300/75">
+                    Historial
+                  </p>
+                  <h3 className="mt-1 text-xl font-black tracking-tight text-white">
+                    Rendimiento partido a partido
+                  </h3>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={exportToExcel}
+                    className="flex items-center gap-2 border border-white/10 bg-white/5 text-white hover:bg-white/10"
                   >
-                    Partido
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    <ArrowDownTrayIcon className="h-4 w-4" />
+                    Excel
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    onClick={exportToPDF}
+                    className="flex items-center gap-2 border border-orange-400/20 bg-orange-500/10 text-orange-200 hover:bg-orange-500/15"
                   >
-                    VAL
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    PTS
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    AST
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    REB
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    STL
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    BLK
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    TOV
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    PF
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {paginatedGames.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={9}
-                      className="px-6 py-4 text-center text-gray-500 dark:text-gray-400"
-                    >
-                      No hay partidos finalizados con estadísticas calculadas.
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedGames.map((game) => (
-                    <tr key={game._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        <p className="font-semibold text-gray-900 dark:text-white">
-                          {game.session.name}
-                        </p>
-                        <p>
-                          Inicio: {new Date(game.session.date).toLocaleString()}
-                        </p>
-                        {game.session.finishedAt && (
-                          <p>
-                            Fin:{' '}
-                            {new Date(game.session.finishedAt).toLocaleString()}
-                          </p>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600 dark:text-blue-400">
-                        {game.gameScore.toFixed(1)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                        {game.points}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {game.ast}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {game.orb + game.drb}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {game.stl}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {game.blk}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {game.tov}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {game.pf}
-                      </td>
+                    <ArrowDownTrayIcon className="h-4 w-4" />
+                    PDF
+                  </Button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead className="border-b border-white/8 bg-white/[0.03]">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
+                        Partido
+                      </th>
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
+                        VAL
+                      </th>
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
+                        PTS
+                      </th>
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
+                        AST
+                      </th>
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
+                        REB
+                      </th>
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
+                        STL
+                      </th>
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
+                        BLK
+                      </th>
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
+                        TOV
+                      </th>
+                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
+                        PF
+                      </th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          {totalPages > 1 && (
-            <div className="flex justify-between items-center p-4 border-t border-gray-200 dark:border-gray-700">
-              <Button
-                variant="secondary"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                Anterior
-              </Button>
-              <span className="text-sm text-gray-500">
-                Página {currentPage} de {totalPages}
-              </span>
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={currentPage === totalPages}
-              >
-                Siguiente
-              </Button>
+                  </thead>
+
+                  <tbody className="divide-y divide-white/6">
+                    {paginatedGames.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={9}
+                          className="px-6 py-10 text-center text-sm text-white/45"
+                        >
+                          No hay partidos finalizados con estadísticas
+                          calculadas.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedGames.map((game) => (
+                        <tr
+                          key={game._id}
+                          className="transition-colors hover:bg-white/[0.03]"
+                        >
+                          <td className="px-6 py-4 text-sm text-white/55">
+                            <p className="font-bold text-white">
+                              {game.session.name}
+                            </p>
+                            <p className="mt-1 text-xs text-white/40">
+                              Inicio:{' '}
+                              {new Date(game.session.date).toLocaleString()}
+                            </p>
+                            {game.session.finishedAt && (
+                              <p className="text-xs text-white/35">
+                                Fin:{' '}
+                                {new Date(
+                                  game.session.finishedAt,
+                                ).toLocaleString()}
+                              </p>
+                            )}
+                          </td>
+
+                          <td className="px-6 py-4 text-sm">
+                            <span className="inline-flex min-w-[58px] items-center justify-center rounded-xl border border-orange-400/20 bg-orange-500/10 px-3 py-1.5 text-sm font-extrabold text-orange-300">
+                              {game.gameScore.toFixed(1)}
+                            </span>
+                          </td>
+
+                          <td className="px-6 py-4 text-sm font-bold text-white">
+                            {game.points}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-white/60">
+                            {game.ast}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-white/60">
+                            {game.orb + game.drb}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-white/60">
+                            {game.stl}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-white/60">
+                            {game.blk}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-white/60">
+                            {game.tov}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-white/60">
+                            {game.pf}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex flex-col gap-3 border-t border-white/8 px-5 py-4 md:flex-row md:items-center md:justify-between md:px-6">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="border border-white/10 bg-white/5 text-white hover:bg-white/10 disabled:opacity-40"
+                  >
+                    Anterior
+                  </Button>
+
+                  <span className="text-sm text-white/45">
+                    Página {currentPage} de {totalPages}
+                  </span>
+
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="border border-white/10 bg-white/5 text-white hover:bg-white/10 disabled:opacity-40"
+                  >
+                    Siguiente
+                  </Button>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
-        {/* Gráfico de Tiro */}
-        <div className="lg:col-span-1">
-          <ShotChart shots={allShots} title="Mapa de Tiro (Carrera)" />
+
+        <div className="xl:col-span-1">
+          <div className="overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.03)_100%)] p-[1px] shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
+            <div className="rounded-[29px] bg-[#0f1117]/95">
+              <div className="border-b border-white/8 px-5 py-5 md:px-6">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-300/75">
+                  Shot chart
+                </p>
+                <h3 className="mt-1 text-xl font-black tracking-tight text-white">
+                  Mapa de tiro
+                </h3>
+                <p className="mt-1 text-sm text-white/45">
+                  Distribución consolidada de lanzamientos del jugador.
+                </p>
+              </div>
+
+              <div className="p-4 md:p-5">
+                <ShotChart shots={allShots} title="Mapa de Tiro (Carrera)" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
