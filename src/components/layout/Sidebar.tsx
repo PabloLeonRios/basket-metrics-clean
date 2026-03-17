@@ -21,6 +21,13 @@
  * - badges dinámicos
  * - colapsado real con solo iconos
  * - estados live
+ *
+ * Mejora UI 2026:
+ * - mayor jerarquía de marca
+ * - navegación más premium
+ * - mejor estado activo
+ * - footer más prolijo
+ * - no se tocan rutas
  */
 
 import Link from 'next/link';
@@ -92,36 +99,40 @@ export default function Sidebar({
   handleLogout,
 }: SidebarProps) {
   const pathname = usePathname();
-
   const teamName = user?.team?.name || 'Dev Team';
 
   return (
     <aside
       className={[
-        'flex h-full flex-col border-r border-white/10 bg-[#07101d] text-white transition-all duration-300',
+        'relative flex h-full flex-col border-r border-white/10 bg-[#07101d] text-white transition-all duration-300',
         isSidebarOpen ? 'w-[290px]' : 'w-[92px]',
       ].join(' ')}
     >
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-0 top-0 h-40 w-40 rounded-full bg-orange-500/8 blur-3xl" />
+        <div className="absolute bottom-0 left-1/2 h-32 w-32 -translate-x-1/2 rounded-full bg-orange-400/5 blur-3xl" />
+      </div>
+
       {/* Brand */}
-      <div className="border-b border-white/10 px-4 py-5">
+      <div className="relative border-b border-white/10 px-4 py-5">
         <div
           className={[
             'flex items-center',
             isSidebarOpen ? 'gap-3' : 'justify-center',
           ].join(' ')}
         >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/12 ring-1 ring-orange-400/20">
-            <Orbit className="h-5 w-5 text-orange-400" />
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/12 ring-1 ring-orange-400/20 shadow-[0_10px_24px_rgba(249,115,22,0.14)]">
+            <Orbit className="h-5 w-5 text-orange-300" />
           </div>
 
           {isSidebarOpen ? (
             <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-white/35">
+              <p className="text-[10px] uppercase tracking-[0.24em] text-white/28">
                 Control Room
               </p>
-              <h1 className="truncate text-[1.75rem] font-bold tracking-tight">
+              <h1 className="truncate text-[1.55rem] font-black tracking-tight">
                 <span className="text-white">Basket</span>
-                <span className="text-orange-500">-Metrics</span>
+                <span className="text-orange-400">Metrics</span>
               </h1>
             </div>
           ) : null}
@@ -129,10 +140,10 @@ export default function Sidebar({
       </div>
 
       {/* Team block */}
-      <div className="px-4 pt-5">
+      <div className="relative px-4 pt-5">
         <div
           className={[
-            'rounded-3xl border border-white/10 bg-white/[0.04] p-4',
+            'rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
             !isSidebarOpen && 'flex items-center justify-center px-2 py-3',
           ]
             .filter(Boolean)
@@ -140,9 +151,10 @@ export default function Sidebar({
         >
           {isSidebarOpen ? (
             <div>
-              <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+              <p className="text-[10px] uppercase tracking-[0.20em] text-white/35">
                 Team workspace
               </p>
+
               <div className="mt-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-white">
@@ -167,10 +179,10 @@ export default function Sidebar({
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 px-3 py-5">
+      <div className="relative flex-1 px-3 py-5">
         {isSidebarOpen ? (
           <div className="mb-3 px-2">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-white/30">
+            <p className="text-[10px] uppercase tracking-[0.24em] text-white/26">
               Navigation
             </p>
           </div>
@@ -188,12 +200,12 @@ export default function Sidebar({
                 href={item.href}
                 title={item.label}
                 className={[
-                  'group flex items-center rounded-2xl border transition-all duration-200',
+                  'group flex items-center rounded-[22px] border transition-all duration-200',
                   isSidebarOpen
                     ? 'justify-between px-4 py-3'
                     : 'justify-center px-2 py-3',
                   isActive
-                    ? 'border-orange-400/25 bg-orange-500/12 shadow-[0_10px_30px_rgba(249,115,22,0.12)]'
+                    ? 'border-orange-400/25 bg-orange-500/12 shadow-[0_12px_30px_rgba(249,115,22,0.12)]'
                     : 'border-transparent bg-transparent hover:border-white/10 hover:bg-white/[0.04]',
                 ].join(' ')}
               >
@@ -263,7 +275,7 @@ export default function Sidebar({
             href="/panel/help"
             title="Ayuda"
             className={[
-              'group flex items-center rounded-2xl border border-transparent text-white/75 transition hover:border-white/10 hover:bg-white/[0.04] hover:text-white',
+              'group flex items-center rounded-[22px] border border-transparent text-white/75 transition hover:border-white/10 hover:bg-white/[0.04] hover:text-white',
               isSidebarOpen ? 'gap-3 px-4 py-3' : 'justify-center px-2 py-3',
             ].join(' ')}
           >
@@ -280,7 +292,7 @@ export default function Sidebar({
             onClick={() => void handleLogout()}
             title="Cerrar sesión"
             className={[
-              'group flex w-full items-center rounded-2xl border border-transparent text-white/75 transition hover:border-red-400/15 hover:bg-red-500/[0.07] hover:text-white',
+              'group flex w-full items-center rounded-[22px] border border-transparent text-white/75 transition hover:border-red-400/15 hover:bg-red-500/[0.07] hover:text-white',
               isSidebarOpen ? 'gap-3 px-4 py-3' : 'justify-center px-2 py-3',
             ].join(' ')}
           >
@@ -295,7 +307,7 @@ export default function Sidebar({
       </div>
 
       {/* Footer */}
-      <div className="border-t border-white/10 px-4 py-4">
+      <div className="relative border-t border-white/10 px-4 py-4">
         <div
           className={[
             'rounded-2xl bg-white/[0.03] px-4 py-3',
@@ -306,7 +318,7 @@ export default function Sidebar({
         >
           {isSidebarOpen ? (
             <div>
-              <p className="text-[10px] uppercase tracking-[0.18em] text-white/30">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/28">
                 Version
               </p>
               <p className="mt-1 text-sm text-white/55">Basket Metrics 0.9</p>
