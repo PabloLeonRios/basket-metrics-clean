@@ -21,13 +21,52 @@ import { toast } from 'react-toastify';
  * - POST /api/players
  * - redirige a /panel/players si sale OK
  *
+ * Ajuste DEMO MODE 2026:
+ * - si NEXT_PUBLIC_DEMO_MODE === 'true'
+ *   NO pega al backend
+ * - guarda el jugador en localStorage
+ * - permite a Pablo probar alta manual en Vercel sin auth real
+ *
+ * Clave localStorage:
+ * - basket_metrics_demo_players
+ *
  * Mejora UI 2026:
  * - SOLO cambia presentación visual
- * - NO se toca submit
- * - NO se toca endpoint
- * - NO se toca estructura del payload
+ * - NO se toca estructura del payload real
  * - Se alinea estética con Players / Dashboard / Panel
  */
+
+const DEMO_PLAYERS_STORAGE_KEY = 'basket_metrics_demo_players';
+
+function isDemoModeEnabled() {
+  return process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+}
+
+function readDemoPlayers() {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const raw = window.localStorage.getItem(DEMO_PLAYERS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDemoPlayers(players: any[]) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(
+      DEMO_PLAYERS_STORAGE_KEY,
+      JSON.stringify(players),
+    );
+  } catch {
+    // no-op
+  }
+}
 
 export default function CreatePlayerForm() {
   const { user } = useAuth();
@@ -40,25 +79,45 @@ export default function CreatePlayerForm() {
   const [isRival, setIsRival] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const labelStyles =
-    'mb-2 block text-sm font-medium text-white/75';
+  const labelStyles = 'mb-2 block text-sm font-medium text-white/75';
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+
     if (!user) {
       toast.error('Debes estar autenticado para crear un jugador.');
       return;
     }
+
     setIsSubmitting(true);
+
     try {
       const newPlayerData = {
         name,
-        dorsal: Number(dorsal),
+        dorsal: dorsal ? Number(dorsal) : undefined,
         position,
         team: team || (isRival ? 'Equipo Rival' : user.team?.name),
         coach: user._id,
         isRival,
       };
+
+      if (isDemoModeEnabled()) {
+        const current = readDemoPlayers();
+
+        const demoPlayer = {
+          _id: `demo-player-${Date.now()}`,
+          ...newPlayerData,
+          isActive: true,
+        };
+
+        saveDemoPlayers([demoPlayer, ...current]);
+
+        toast.success(
+          'Jugador creado en modo demo. Redirigiendo al listado...',
+        );
+        router.push('/panel/players');
+        return;
+      }
 
       const response = await fetch('/api/players', {
         method: 'POST',
@@ -105,7 +164,9 @@ export default function CreatePlayerForm() {
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/55">
-            Formulario de carga inicial
+            {isDemoModeEnabled()
+              ? 'Formulario de carga inicial · demo mode'
+              : 'Formulario de carga inicial'}
           </div>
         </div>
 
@@ -204,7 +265,8 @@ export default function CreatePlayerForm() {
 
           <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-white/35">
-              Al guardar, el jugador quedará disponible en el listado del plantel.
+              Al guardar, el jugador quedará disponible en el listado del
+              plantel.
             </p>
 
             <Button
