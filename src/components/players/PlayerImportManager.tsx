@@ -35,13 +35,51 @@ interface ExcelPlayerRow {
  * - POST /api/players/import
  * - exporta todos los jugadores con GET /api/players
  *
+ * Ajuste DEMO MODE 2026:
+ * - si NEXT_PUBLIC_DEMO_MODE === 'true'
+ *   NO pega al backend
+ * - importa jugadores a localStorage
+ * - exporta desde localStorage
+ *
+ * Clave localStorage:
+ * - basket_metrics_demo_players
+ *
  * Mejora UI 2026:
  * - SOLO cambia presentación visual
- * - NO se toca lógica de importación
- * - NO se toca lógica de exportación
- * - NO se toca lectura de Excel
  * - Se alinea estética con Players / Dashboard / Panel
  */
+
+const DEMO_PLAYERS_STORAGE_KEY = 'basket_metrics_demo_players';
+
+function isDemoModeEnabled() {
+  return process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+}
+
+function readDemoPlayers(): IPlayer[] {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const raw = window.localStorage.getItem(DEMO_PLAYERS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDemoPlayers(players: IPlayer[]) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(
+      DEMO_PLAYERS_STORAGE_KEY,
+      JSON.stringify(players),
+    );
+  } catch {
+    // no-op
+  }
+}
 
 export default function PlayerImportManager() {
   const { user } = useAuth();
@@ -129,14 +167,28 @@ export default function PlayerImportManager() {
         }
 
         return {
+          _id: `demo-player-${Date.now()}-${index}`,
+          user: '',
+          coach: user._id,
           name: row.Nombre,
           dorsal: row.Dorsal ? Number(row.Dorsal) : undefined,
           position: row.Posición || '',
           team: row.Equipo || (isRival ? 'Equipo Rival' : user.team?.name),
-          coach: user._id,
+          isActive: true,
           isRival,
-        };
+        } as IPlayer;
       });
+
+      if (isDemoModeEnabled()) {
+        const current = readDemoPlayers();
+        saveDemoPlayers([...formattedPlayers, ...current]);
+
+        toast.success(
+          'Jugadores importados en modo demo. Redirigiendo al listado...',
+        );
+        router.push('/panel/players');
+        return;
+      }
 
       const response = await fetch('/api/players/import', {
         method: 'POST',
@@ -158,11 +210,11 @@ export default function PlayerImportManager() {
           : 'Error desconocido al procesar el archivo.',
       );
     } finally {
-      setIsSubmitting(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      setSelectedFile(null);
+        setIsSubmitting(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        setSelectedFile(null);
     }
   };
 
@@ -175,33 +227,39 @@ export default function PlayerImportManager() {
     setIsExporting(true);
 
     try {
-      const [mineRes, rivalsRes] = await Promise.all([
-        fetch(
-          `/api/players?coachId=${user._id}&teamType=mine&limit=1000${
-            user.team?.name
-              ? `&userTeamName=${encodeURIComponent(user.team.name)}`
-              : ''
-          }`,
-        ),
-        fetch(
-          `/api/players?coachId=${user._id}&teamType=rivals&limit=1000${
-            user.team?.name
-              ? `&userTeamName=${encodeURIComponent(user.team.name)}`
-              : ''
-          }`,
-        ),
-      ]);
+      let allPlayers: IPlayer[] = [];
 
-      const [mineData, rivalsData] = await Promise.all([
-        mineRes.json(),
-        rivalsRes.json(),
-      ]);
+      if (isDemoModeEnabled()) {
+        allPlayers = readDemoPlayers();
+      } else {
+        const [mineRes, rivalsRes] = await Promise.all([
+          fetch(
+            `/api/players?coachId=${user._id}&teamType=mine&limit=1000${
+              user.team?.name
+                ? `&userTeamName=${encodeURIComponent(user.team.name)}`
+                : ''
+            }`,
+          ),
+          fetch(
+            `/api/players?coachId=${user._id}&teamType=rivals&limit=1000${
+              user.team?.name
+                ? `&userTeamName=${encodeURIComponent(user.team.name)}`
+                : ''
+            }`,
+          ),
+        ]);
 
-      if (!mineData.success || !rivalsData.success) {
-        throw new Error('Error al obtener los datos de jugadores.');
+        const [mineData, rivalsData] = await Promise.all([
+          mineRes.json(),
+          rivalsRes.json(),
+        ]);
+
+        if (!mineData.success || !rivalsData.success) {
+          throw new Error('Error al obtener los datos de jugadores.');
+        }
+
+        allPlayers = [...mineData.data, ...rivalsData.data];
       }
-
-      const allPlayers: IPlayer[] = [...mineData.data, ...rivalsData.data];
 
       if (allPlayers.length === 0) {
         toast.info('No hay jugadores para exportar.');
