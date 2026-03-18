@@ -23,11 +23,9 @@
  * - estados live
  *
  * Mejora UI 2026:
- * - mayor jerarquía de marca
- * - navegación más premium
- * - mejor estado activo
- * - footer más prolijo
- * - no se tocan rutas
+ * - sidebar con scroll real cuando el alto no alcanza
+ * - link de Mi Club apunta a /panel/club (hub)
+ * - no se tocan rutas base de negocio
  */
 
 import Link from 'next/link';
@@ -104,7 +102,8 @@ export default function Sidebar({
   return (
     <aside
       className={[
-        'relative flex h-full flex-col border-r border-white/10 bg-[#07101d] text-white transition-all duration-300',
+        'relative flex h-screen flex-col border-r border-white/10 bg-[#07101d] text-white transition-all duration-300',
+        'overflow-y-auto overflow-x-hidden',
         isSidebarOpen ? 'w-[290px]' : 'w-[92px]',
       ].join(' ')}
     >
@@ -113,7 +112,6 @@ export default function Sidebar({
         <div className="absolute bottom-0 left-1/2 h-32 w-32 -translate-x-1/2 rounded-full bg-orange-400/5 blur-3xl" />
       </div>
 
-      {/* Brand */}
       <div className="relative border-b border-white/10 px-4 py-5">
         <div
           className={[
@@ -139,7 +137,6 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Team block */}
       <div className="relative px-4 pt-5">
         <div
           className={[
@@ -178,7 +175,6 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Navigation */}
       <div className="relative flex-1 px-3 py-5">
         {isSidebarOpen ? (
           <div className="mb-3 px-2">
@@ -306,7 +302,6 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Footer */}
       <div className="relative border-t border-white/10 px-4 py-4">
         <div
           className={[
