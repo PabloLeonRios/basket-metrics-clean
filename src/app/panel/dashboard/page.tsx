@@ -6,32 +6,23 @@
  * ============================
  * PÁGINA: Dashboard principal
  *
- * Estado actual:
- * - Dashboard visual con datos mock para demo.
- * - Mantiene:
- *   - hero principal
- *   - bloque top rendimiento
- *   - KPIs de panel
+ * Ajuste 2026:
+ * - se mantiene la UI premium aprobada por Pablo
+ * - se deja de depender 100% de mocks duros
+ * - intenta consumir datos reales del frontend sin tocar backend
  *
- * Datos actuales mock:
- * - panelStats
- * - topPlayers
+ * Estrategia actual:
+ * 1) intenta cargar /api/players
+ * 2) arma métricas simples desde roster real
+ * 3) arma topPlayers básico desde roster real
+ * 4) si algo falla, cae a valores demo para no romper la pantalla
  *
- * Futuro backend sugerido:
+ * Importante:
+ * - NO modifica endpoints
+ * - NO exige cambios server-side
+ * - NO complica la futura migración a Mongo
  *
- * GET /api/dashboard/overview
- * {
- *   players: number,
- *   sessions: number,
- *   activePlayers: number
- * }
- *
- * GET /api/dashboard/top-players
- * [
- *   { id: string, name: string, number: number, efficiency: number, isRival?: boolean }
- * ]
- *
- * Regla actual de camiseta:
+ * Branding visual:
  * - equipo propio:
  *   1) homeJerseyUrl
  *   2) home palette
@@ -41,27 +32,15 @@
  *   2) away palette
  *   3) fallback demo
  *
- * Campos esperados en Team:
- * - jerseyUrl?: string              // legacy
- * - homeJerseyUrl?: string
- * - awayJerseyUrl?: string
- * - homePrimaryColor?: string
- * - homeSecondaryColor?: string
- * - awayPrimaryColor?: string
- * - awaySecondaryColor?: string
- *
- * Importante:
- * - mantener esta página preparada para migrar a fetch real
+ * Próximo paso ideal futuro:
+ * - reemplazar esta lógica client-side por:
+ *   GET /api/dashboard/overview
+ *   GET /api/dashboard/top-players
  */
 
 import Link from 'next/link';
-import { useState } from 'react';
-import {
-  Activity,
-  ArrowRight,
-  ClipboardList,
-  Users,
-} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Activity, ArrowRight, ClipboardList, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 type TeamWithBranding = {
@@ -73,6 +52,77 @@ type TeamWithBranding = {
   awayPrimaryColor?: string;
   awaySecondaryColor?: string;
 };
+
+type DashboardPlayer = {
+  id: string;
+  name: string;
+  number?: number;
+  efficiency: number;
+  isRival?: boolean;
+};
+
+type PanelStats = {
+  players: number;
+  sessions: number;
+  activePlayers: number;
+};
+
+const demoPanelStats: PanelStats = {
+  players: 12,
+  sessions: 4,
+  activePlayers: 10,
+};
+
+const demoTopPlayers: DashboardPlayer[] = [
+  {
+    id: '1',
+    name: 'Juan Pérez González',
+    number: 23,
+    efficiency: 12,
+    isRival: false,
+  },
+  {
+    id: '2',
+    name: 'Lucas Fernández Díaz',
+    number: 7,
+    efficiency: 9,
+    isRival: false,
+  },
+  {
+    id: '3',
+    name: 'Martín Rodríguez Silva',
+    number: 11,
+    efficiency: 8,
+    isRival: true,
+  },
+];
+
+function normalizeDashboardPlayer(raw: any): DashboardPlayer | null {
+  const id = raw?._id || raw?.id;
+  if (!id) return null;
+
+  const numberRaw = raw?.dorsal ?? raw?.number ?? raw?.numero;
+  const parsedNumber =
+    typeof numberRaw === 'number'
+      ? numberRaw
+      : typeof numberRaw === 'string' && numberRaw.trim() !== ''
+        ? Number(numberRaw)
+        : undefined;
+
+  const efficiencyRaw = raw?.efficiency ?? raw?.score ?? raw?.gameScore ?? 0;
+  const efficiency =
+    typeof efficiencyRaw === 'number'
+      ? efficiencyRaw
+      : Number(efficiencyRaw) || 0;
+
+  return {
+    id: String(id),
+    name: raw?.name || raw?.nombre || 'Jugador sin nombre',
+    number: Number.isFinite(parsedNumber) ? parsedNumber : undefined,
+    efficiency,
+    isRival: Boolean(raw?.isRival),
+  };
+}
 
 function shellClassName() {
   return 'rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,#0b1624_0%,#070e18_100%)] shadow-[0_24px_70px_rgba(0,0,0,0.30)]';
@@ -294,7 +344,7 @@ function TopPlayerCard({
   awaySecondaryColor,
 }: {
   name: string;
-  number: number;
+  number?: number;
   efficiency: number;
   href: string;
   isRival?: boolean;
@@ -341,7 +391,7 @@ function TopPlayerCard({
                 Top rendimiento
               </p>
 
-              <span className="mt-2 block text-[1.45rem] font-black leading-[1.08] tracking-tight text-white line-clamp-2 break-words">
+              <span className="mt-2 block line-clamp-2 break-words text-[1.45rem] font-black leading-[1.08] tracking-tight text-white">
                 {name}
               </span>
 
@@ -382,17 +432,87 @@ export default function DashboardPage() {
   const awayPrimaryColor = team?.awayPrimaryColor || '#1f2937';
   const awaySecondaryColor = team?.awaySecondaryColor || '#6b7280';
 
-  const panelStats = {
-    players: 12,
-    sessions: 4,
-    activePlayers: 10,
-  };
+  const [players, setPlayers] = useState<DashboardPlayer[]>([]);
+  const [playersReady, setPlayersReady] = useState(false);
+  const [usingFallback, setUsingFallback] = useState(false);
 
-  const topPlayers = [
-    { id: '1', name: 'Juan Pérez González', number: 23, efficiency: 12, isRival: false },
-    { id: '2', name: 'Lucas Fernández Díaz', number: 7, efficiency: 9, isRival: false },
-    { id: '3', name: 'Martín Rodríguez Silva', number: 11, efficiency: 8, isRival: true },
-  ];
+  useEffect(() => {
+    let active = true;
+
+    async function fetchPlayers() {
+      try {
+        setPlayersReady(false);
+        setUsingFallback(false);
+
+        const response = await fetch('/api/players', {
+          cache: 'no-store',
+        });
+
+        if (!response.ok) {
+          throw new Error('No se pudo cargar el roster para dashboard.');
+        }
+
+        const json = await response.json();
+        const rawList = Array.isArray(json)
+          ? json
+          : Array.isArray(json?.data)
+            ? json.data
+            : Array.isArray(json?.players)
+              ? json.players
+              : [];
+
+        const normalized = rawList
+          .map(normalizeDashboardPlayer)
+          .filter(Boolean) as DashboardPlayer[];
+
+        if (!normalized.length) {
+          throw new Error('Sin jugadores utilizables para dashboard.');
+        }
+
+        if (!active) return;
+        setPlayers(normalized);
+      } catch (error) {
+        console.error(error);
+        if (!active) return;
+        setPlayers(demoTopPlayers);
+        setUsingFallback(true);
+      } finally {
+        if (active) setPlayersReady(true);
+      }
+    }
+
+    fetchPlayers();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const panelStats = useMemo<PanelStats>(() => {
+    if (!playersReady) {
+      return demoPanelStats;
+    }
+
+    if (usingFallback) {
+      return demoPanelStats;
+    }
+
+    const ownPlayers = players.filter((p) => !p.isRival);
+    return {
+      players: players.length,
+      sessions: demoPanelStats.sessions,
+      activePlayers: ownPlayers.length,
+    };
+  }, [players, playersReady, usingFallback]);
+
+  const topPlayers = useMemo<DashboardPlayer[]>(() => {
+    if (!playersReady) {
+      return demoTopPlayers;
+    }
+
+    const list = [...players].sort((a, b) => b.efficiency - a.efficiency).slice(0, 3);
+    return list.length ? list : demoTopPlayers;
+  }, [players, playersReady]);
 
   return (
     <div className="space-y-6">
@@ -452,6 +572,14 @@ export default function DashboardPage() {
 
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/65">
                 Datos para entrenadores
+              </div>
+
+              <div className="pt-2 text-xs text-white/30">
+                {!playersReady
+                  ? 'Cargando datos del roster...'
+                  : usingFallback
+                    ? 'Dashboard mostrando datos demo de respaldo.'
+                    : 'Dashboard armado con roster real.'}
               </div>
             </div>
           </div>
@@ -518,7 +646,7 @@ export default function DashboardPage() {
         <KpiCard
           title="Jugadores activos"
           value={String(panelStats.activePlayers)}
-          helper="Jugadores con actividad reciente."
+          helper="Jugadores del club en el roster actual."
           icon={Activity}
           href="/panel/players"
         />
