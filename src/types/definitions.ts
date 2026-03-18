@@ -1,5 +1,36 @@
 // src/types/definitions.ts
 
+/**
+ * ==========================================
+ * NOTAS PARA PABLITO (tipos frontend / Team)
+ * ==========================================
+ *
+ * Este archivo NO toca backend ni Mongo.
+ * Solo ordena el contrato del frontend para que Pablo pueda:
+ * - configurar branding del club en Mi Club
+ * - reutilizar camisetas/colores en Dashboard
+ * - reutilizar camisetas/colores en Players
+ * - reutilizar camisetas/colores en PlayerProfile
+ *
+ * Decisión funcional actual:
+ * - se mantiene compatibilidad legacy con `jerseyUrl`
+ * - se agregan campos nuevos de branding a nivel de tipo
+ * - esto NO obliga a persistencia real todavía
+ * - cuando migres a Mongo, idealmente el modelo Team debería contemplar:
+ *   logoUrl?: string
+ *   jerseyUrl?: string              // legacy
+ *   homeJerseyUrl?: string
+ *   awayJerseyUrl?: string
+ *   homePrimaryColor?: string
+ *   homeSecondaryColor?: string
+ *   awayPrimaryColor?: string
+ *   awaySecondaryColor?: string
+ *
+ * Importante:
+ * - Pablo está trabajando primero el flujo visual/funcional del frontend
+ * - no romper compatibilidad con pantallas viejas que lean `jerseyUrl`
+ */
+
 // --- USER ---
 export interface IUser {
   _id: string;
@@ -18,7 +49,20 @@ export interface IUser {
 export interface ITeam {
   _id: string;
   name: string;
+
+  // branding base
   logoUrl?: string;
+
+  // legacy
+  jerseyUrl?: string;
+
+  // branding nuevo
+  homeJerseyUrl?: string;
+  awayJerseyUrl?: string;
+  homePrimaryColor?: string;
+  homeSecondaryColor?: string;
+  awayPrimaryColor?: string;
+  awaySecondaryColor?: string;
 }
 
 // --- PLAYER ---
