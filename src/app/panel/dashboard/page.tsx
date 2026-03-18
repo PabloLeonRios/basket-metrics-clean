@@ -12,10 +12,11 @@
  * - intenta consumir datos reales del frontend sin tocar backend
  *
  * Estrategia actual:
- * 1) intenta cargar /api/players
- * 2) arma métricas simples desde roster real
- * 3) arma topPlayers básico desde roster real
- * 4) si algo falla, cae a valores demo para no romper la pantalla
+ * 1) intenta cargar /api/players cuando NO estamos en demo mode
+ * 2) en demo mode lee jugadores desde localStorage
+ * 3) arma métricas simples desde roster
+ * 4) arma topPlayers básico desde roster
+ * 5) si algo falla, cae a valores demo para no romper la pantalla
  *
  * Importante:
  * - NO modifica endpoints
@@ -37,6 +38,9 @@
  * - se usa directamente ITeam
  * - se mantiene compatibilidad con jerseyUrl legacy
  *
+ * Clave localStorage demo:
+ * - basket_metrics_demo_players
+ *
  * Próximo paso ideal futuro:
  * - reemplazar esta lógica client-side por:
  *   GET /api/dashboard/overview
@@ -47,7 +51,9 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, ArrowRight, ClipboardList, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { ITeam } from '@/types/definitions';
+import { IPlayer, ITeam } from '@/types/definitions';
+
+const DEMO_PLAYERS_STORAGE_KEY = 'basket_metrics_demo_players';
 
 type DashboardPlayer = {
   id: string;
@@ -92,6 +98,23 @@ const demoTopPlayers: DashboardPlayer[] = [
     isRival: true,
   },
 ];
+
+function isDemoModeEnabled() {
+  return process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+}
+
+function readDemoPlayers(): IPlayer[] {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const raw = window.localStorage.getItem(DEMO_PLAYERS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 function normalizeDashboardPlayer(raw: any): DashboardPlayer | null {
   const id = raw?._id || raw?.id;
@@ -435,10 +458,28 @@ export default function DashboardPage() {
   useEffect(() => {
     let active = true;
 
-    async function fetchPlayers() {
+    async function loadPlayers() {
       try {
         setPlayersReady(false);
         setUsingFallback(false);
+
+        if (isDemoModeEnabled()) {
+          const demoStored = readDemoPlayers();
+          const normalizedDemo = demoStored
+            .map(normalizeDashboardPlayer)
+            .filter(Boolean) as DashboardPlayer[];
+
+          if (!active) return;
+
+          if (normalizedDemo.length > 0) {
+            setPlayers(normalizedDemo);
+            return;
+          }
+
+          setPlayers(demoTopPlayers);
+          setUsingFallback(true);
+          return;
+        }
 
         const response = await fetch('/api/players', {
           cache: 'no-store',
@@ -477,10 +518,17 @@ export default function DashboardPage() {
       }
     }
 
-    fetchPlayers();
+    loadPlayers();
+
+    const onFocus = () => {
+      loadPlayers();
+    };
+
+    window.addEventListener('focus', onFocus);
 
     return () => {
       active = false;
+      window.removeEventListener('focus', onFocus);
     };
   }, []);
 
@@ -579,7 +627,9 @@ export default function DashboardPage() {
                   ? 'Cargando datos del roster...'
                   : usingFallback
                     ? 'Dashboard mostrando datos demo de respaldo.'
-                    : 'Dashboard armado con roster real.'}
+                    : isDemoModeEnabled()
+                      ? 'Dashboard armado con jugadores de demo mode.'
+                      : 'Dashboard armado con roster real.'}
               </div>
             </div>
           </div>
