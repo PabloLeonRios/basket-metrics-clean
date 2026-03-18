@@ -39,8 +39,8 @@
  *
  * Mejora UI 2026:
  * - hero más compacto
- * - top rendimiento más visible y más arriba
- * - cards con menos aire y más jerarquía
+ * - top rendimiento más visible y mejor contenido
+ * - mejor contención visual de la camiseta
  * - score con más protagonismo
  * - mismo comportamiento funcional
  */
@@ -124,10 +124,10 @@ function DashboardJersey({
   const safeId = `jersey-${number}-${primary.replace('#', '')}`;
 
   return (
-    <div className="flex items-center justify-center">
+    <div className="flex h-full w-full items-center justify-center">
       <svg
         viewBox="0 0 180 210"
-        className="h-28 w-24 drop-shadow-[0_0_24px_rgba(255,106,0,0.28)] transition-transform duration-300 group-hover:scale-[1.05]"
+        className="h-[82px] w-[64px] drop-shadow-[0_0_18px_rgba(255,106,0,0.22)] transition-transform duration-300 group-hover:scale-[1.04]"
         aria-hidden="true"
       >
         <defs>
@@ -245,12 +245,12 @@ function ClubJerseyImage({ jerseyUrl }: { jerseyUrl: string }) {
   const [src, setSrc] = useState(jerseyUrl || '/america.jpg');
 
   return (
-    <div className="flex h-28 w-24 items-center justify-center">
+    <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[20px]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt="Camiseta del club"
-        className="h-28 w-24 object-contain drop-shadow-[0_0_18px_rgba(0,0,0,0.38)] transition-transform duration-300 group-hover:scale-[1.05]"
+        className="h-[82px] w-[64px] object-contain transition-transform duration-300 group-hover:scale-[1.04]"
         onError={() => setSrc('/america.jpg')}
       />
     </div>
@@ -282,41 +282,51 @@ function TopPlayerCard({
         hover:-translate-y-1 hover:border-orange-400/25 hover:shadow-[0_20px_60px_rgba(0,0,0,0.32)]
       "
     >
-      <div className="relative flex items-center gap-4 rounded-[27px] bg-[#0f1117]/95 px-5 py-5">
+      <div className="relative rounded-[27px] bg-[#0f1117]/95 px-5 py-5">
         <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
           <div className="absolute -left-6 top-1/2 h-24 w-24 -translate-y-1/2 rounded-full bg-orange-500/10 blur-3xl" />
           <div className="absolute right-0 top-0 h-16 w-16 rounded-full bg-orange-400/8 blur-2xl" />
         </div>
 
-        <div className="relative flex h-24 w-24 items-center justify-center rounded-[24px] border border-white/8 bg-white/[0.04] shadow-inner shadow-black/20">
-          {useRealClubJersey ? (
-            <ClubJerseyImage jerseyUrl={clubJerseyUrl!} />
-          ) : (
-            <DashboardJersey number={number} />
-          )}
-        </div>
+        <div className="relative flex min-h-[156px] flex-col gap-4">
+          <div className="flex items-start gap-4">
+            <div className="flex h-[116px] w-[116px] shrink-0 items-center justify-center rounded-[24px] border border-white/8 bg-white/[0.04] shadow-inner shadow-black/20">
+              {useRealClubJersey ? (
+                <ClubJerseyImage jerseyUrl={clubJerseyUrl!} />
+              ) : (
+                <DashboardJersey number={number} />
+              )}
+            </div>
 
-        <div className="relative min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-300/70">
-            Top rendimiento
-          </p>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-300/70">
+                Top rendimiento
+              </p>
 
-          <span className="mt-1 block truncate text-xl font-black leading-tight tracking-tight text-white">
-            {name}
-          </span>
+              <span className="mt-2 block truncate text-[1.85rem] font-black leading-none tracking-tight text-white">
+                {name}
+              </span>
 
-          <span className="mt-2 block text-sm text-white/40">
-            Eficiencia destacada del equipo
-          </span>
-        </div>
+              <span className="mt-3 block max-w-[18ch] text-sm leading-7 text-white/45">
+                Eficiencia destacada del equipo
+              </span>
+            </div>
+          </div>
 
-        <div className="relative ml-auto text-right">
-          <span className="inline-flex min-w-[88px] items-center justify-center rounded-2xl border border-orange-400/20 bg-orange-500/10 px-4 py-2 text-4xl font-black tracking-tight text-orange-300 shadow-[0_12px_30px_rgba(255,106,0,0.10)]">
-            +{efficiency}
-          </span>
-          <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/35">
-            Score
-          </p>
+          <div className="mt-auto flex items-end justify-between gap-3">
+            <span className="text-xs uppercase tracking-[0.24em] text-white/28">
+              Rendimiento actual
+            </span>
+
+            <div className="text-right">
+              <span className="inline-flex min-w-[118px] items-center justify-center rounded-2xl border border-orange-400/20 bg-orange-500/10 px-4 py-2 text-4xl font-black tracking-tight text-orange-300 shadow-[0_12px_30px_rgba(255,106,0,0.10)]">
+                +{efficiency}
+              </span>
+              <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/35">
+                Score
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </Link>
