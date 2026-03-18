@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ChevronRight, Search, Shield, Swords, Users2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { ITeam } from '@/types/definitions';
 import { useEffect, useMemo, useState } from 'react';
 
 /**
@@ -13,33 +14,16 @@ import { useEffect, useMemo, useState } from 'react';
  * NOTAS PARA PABLITO (Mongo / listado frontend)
  * ---------------------------------------------
  * Objetivo de este ajuste:
- * - dejar de depender de demoPlayers hardcodeado
- * - intentar consumir el listado real desde /api/players
- * - mantener intacta la UX visual premium que Pablo ya aprobó
- * - no tocar backend ni exigir cambios server-side ahora
+ * - mantener el fetch real a /api/players
+ * - mantener fallback demo si el endpoint falla
+ * - eliminar tipo local duplicado TeamWithBranding
+ * - usar directamente ITeam del contrato frontend
  *
- * Estrategia:
- * - fetch client-side a /api/players
- * - mapping tolerante a distintos nombres de campos
- * - si el endpoint falla o no devuelve lista usable:
- *   se cae a demoPlayers para no romper la pantalla
- *
- * Compatibilidad contemplada:
- * - _id o id
- * - dorsal o number
- * - position o posicion
- * - team string / team object / sin team
- * - isRival explícito
- *
- * Branding de camisetas:
- * - equipo propio:
- *   1) homeJerseyUrl
- *   2) home palette
- *   3) fallback demo
- * - rival:
- *   1) awayJerseyUrl
- *   2) away palette
- *   3) fallback demo
+ * Importante:
+ * - NO se toca backend
+ * - NO se cambian endpoints
+ * - NO se rompe el fallback demo
+ * - se mantiene compatibilidad con jerseyUrl legacy
  *
  * Futuro ideal con Mongo:
  * - mover fetch a service dedicado
@@ -57,16 +41,6 @@ interface Player {
   score?: number;
   isRival?: boolean;
 }
-
-type TeamWithBranding = {
-  jerseyUrl?: string;
-  homeJerseyUrl?: string;
-  awayJerseyUrl?: string;
-  homePrimaryColor?: string;
-  homeSecondaryColor?: string;
-  awayPrimaryColor?: string;
-  awaySecondaryColor?: string;
-};
 
 const demoPlayers: Player[] = [
   {
@@ -442,7 +416,7 @@ function SummaryCard({
 
 export default function PlayerManager() {
   const { user } = useAuth();
-  const team = (user?.team as TeamWithBranding | undefined) ?? undefined;
+  const team: ITeam | undefined = user?.team;
 
   const homeJerseyUrl = team?.homeJerseyUrl || team?.jerseyUrl || '';
   const awayJerseyUrl = team?.awayJerseyUrl || '';
@@ -559,8 +533,16 @@ export default function PlayerManager() {
             value={filteredPlayers.length}
             tone="accent"
           />
-          <SummaryCard icon={Shield} label="Propios" value={ownPlayers.length} />
-          <SummaryCard icon={Swords} label="Rivales" value={rivalPlayers.length} />
+          <SummaryCard
+            icon={Shield}
+            label="Propios"
+            value={ownPlayers.length}
+          />
+          <SummaryCard
+            icon={Swords}
+            label="Rivales"
+            value={rivalPlayers.length}
+          />
         </div>
       </div>
 
