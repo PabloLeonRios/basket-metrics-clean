@@ -40,7 +40,8 @@
  *
  * Regla funcional dashboard:
  * - TOP RENDIMIENTO = solo jugadores propios
- * - los rivales NO deben aparecer en ese bloque principal
+ * - JUGADORES REGISTRADOS = solo jugadores propios
+ * - los rivales NO deben contaminar KPIs principales del club
  *
  * Clave localStorage demo:
  * - basket_metrics_demo_players
@@ -126,9 +127,9 @@ function normalizeDashboardPlayer(raw: any): DashboardPlayer | null {
 
   const numberRaw = raw?.dorsal ?? raw?.number ?? raw?.numero;
   const parsedNumber =
-    typeof numberRaw === 'number'
+    typeof numberRaw === "number"
       ? numberRaw
-      : typeof numberRaw === 'string' && numberRaw.trim() !== ''
+      : typeof numberRaw === "string" && numberRaw.trim() !== ""
         ? Number(numberRaw)
         : undefined;
 
@@ -551,11 +552,11 @@ export default function DashboardPage() {
     }
 
     return {
-      players: players.length,
+      players: ownPlayers.length,
       sessions: demoPanelStats.sessions,
       activePlayers: ownPlayers.length,
     };
-  }, [players, ownPlayers, playersReady, usingFallback]);
+  }, [ownPlayers, playersReady, usingFallback]);
 
   const topPlayers = useMemo<DashboardPlayer[]>(() => {
     if (!playersReady) {
@@ -689,7 +690,7 @@ export default function DashboardPage() {
         <KpiCard
           title="Jugadores registrados"
           value={String(panelStats.players)}
-          helper="Cantidad total de jugadores cargados."
+          helper="Cantidad total de jugadores propios cargados."
           icon={Users}
           href="/panel/players"
         />
