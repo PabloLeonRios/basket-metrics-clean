@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { ChevronRight, Search, Shield, Swords, Users2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { ITeam } from '@/types/definitions';
+import { IPlayer, ITeam } from '@/types/definitions';
 import { useEffect, useMemo, useState } from 'react';
 
 /**
@@ -14,15 +14,17 @@ import { useEffect, useMemo, useState } from 'react';
  * NOTAS PARA PABLITO (Mongo / listado frontend)
  * ---------------------------------------------
  * Objetivo de este ajuste:
- * - mantener el fetch real a /api/players
- * - mantener fallback demo si el endpoint falla
- * - eliminar tipo local duplicado TeamWithBranding
+ * - mantener fetch real a /api/players cuando NO estamos en demo mode
+ * - leer jugadores desde localStorage cuando NEXT_PUBLIC_DEMO_MODE === 'true'
+ * - mantener fallback demo si no hay datos
  * - usar directamente ITeam del contrato frontend
+ *
+ * Clave localStorage:
+ * - basket_metrics_demo_players
  *
  * Importante:
  * - NO se toca backend
- * - NO se cambian endpoints
- * - NO se rompe el fallback demo
+ * - NO se cambian endpoints reales
  * - se mantiene compatibilidad con jerseyUrl legacy
  *
  * Futuro ideal con Mongo:
@@ -31,6 +33,8 @@ import { useEffect, useMemo, useState } from 'react';
  * - paginación real
  * - tabs / conteos reales
  */
+
+const DEMO_PLAYERS_STORAGE_KEY = 'basket_metrics_demo_players';
 
 interface Player {
   id: string;
@@ -71,6 +75,23 @@ const demoPlayers: Player[] = [
     isRival: true,
   },
 ];
+
+function isDemoModeEnabled() {
+  return process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+}
+
+function readDemoPlayers(): IPlayer[] {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const raw = window.localStorage.getItem(DEMO_PLAYERS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 function normalizePlayer(raw: any): Player | null {
   const id = raw?._id || raw?.id;
@@ -433,10 +454,28 @@ export default function PlayerManager() {
   useEffect(() => {
     let active = true;
 
-    async function fetchPlayers() {
+    async function loadPlayers() {
       try {
         setLoading(true);
         setUsingFallback(false);
+
+        if (isDemoModeEnabled()) {
+          const demoStored = readDemoPlayers();
+          const normalizedDemo = demoStored
+            .map(normalizePlayer)
+            .filter(Boolean) as Player[];
+
+          if (!active) return;
+
+          if (normalizedDemo.length > 0) {
+            setPlayers(normalizedDemo);
+            return;
+          }
+
+          setPlayers(demoPlayers);
+          setUsingFallback(true);
+          return;
+        }
 
         const response = await fetch('/api/players', {
           cache: 'no-store',
@@ -475,10 +514,17 @@ export default function PlayerManager() {
       }
     }
 
-    fetchPlayers();
+    loadPlayers();
+
+    const onFocus = () => {
+      loadPlayers();
+    };
+
+    window.addEventListener('focus', onFocus);
 
     return () => {
       active = false;
+      window.removeEventListener('focus', onFocus);
     };
   }, []);
 
@@ -521,8 +567,10 @@ export default function PlayerManager() {
             {loading
               ? 'Cargando jugadores...'
               : usingFallback
-                ? 'Mostrando datos demo porque el listado real no estuvo disponible.'
-                : 'Mostrando listado real del roster.'}
+                ? 'Mostrando datos demo de respaldo.'
+                : isDemoModeEnabled()
+                  ? 'Mostrando jugadores guardados en demo mode.'
+                  : 'Mostrando listado real del roster.'}
           </p>
         </div>
 
