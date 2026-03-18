@@ -9,8 +9,50 @@ import autoTable from 'jspdf-autotable';
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import Button from '@/components/ui/Button';
 import { toast } from 'react-toastify';
+import { useAuth } from '@/hooks/useAuth';
 
-// Deberíamos centralizar estos tipos
+/**
+ * ============================
+ *  NOTAS PARA PABLITO (Mongo)
+ * ============================
+ * COMPONENTE: PlayerProfile
+ *
+ * Estado actual:
+ * - muestra promedios de carrera
+ * - muestra partido a partido
+ * - muestra shot chart
+ * - exporta a Excel y PDF
+ *
+ * Regla visual nueva de camisetas:
+ * - jugador propio:
+ *   1) homeJerseyUrl
+ *   2) home palette
+ *   3) fallback demo
+ * - rival:
+ *   1) awayJerseyUrl
+ *   2) away palette
+ *   3) fallback demo
+ *
+ * Campos esperados en Team:
+ * - jerseyUrl?: string // legacy
+ * - homeJerseyUrl?: string
+ * - awayJerseyUrl?: string
+ * - homePrimaryColor?: string
+ * - homeSecondaryColor?: string
+ * - awayPrimaryColor?: string
+ * - awaySecondaryColor?: string
+ *
+ * Futuro backend sugerido:
+ * - GET /api/players/:id
+ *   debería traer también:
+ *   - isRival
+ *   - team / metadata visual si hace falta
+ *
+ * Importante:
+ * - hoy inferimos rival/propio desde la data del endpoint si existe
+ * - si no viene, cae por defecto a "propio"
+ */
+
 interface CareerAverages {
   avgPoints: number;
   avgEFG: number;
@@ -18,6 +60,7 @@ interface CareerAverages {
   avgGameScore: number;
   totalGames: number;
 }
+
 interface GameStats {
   _id: string;
   session: { name: string; date: string; finishedAt?: string };
@@ -33,47 +76,206 @@ interface GameStats {
   pf: number;
   gameScore: number;
 }
+
 interface Shot {
   x: number;
   y: number;
   made: boolean;
 }
 
-/**
- * ============================================================
- * PLAYER PROFILE
- * ============================================================
- *
- * NOTAS PARA PABLITO (Mongo)
- * --------------------------
- * Esta pantalla mantiene intacta la lógica actual:
- * - fetch /api/players/:id/stats
- * - fetch /api/game-events?playerId=
- * - exportación a Excel y PDF
- * - paginado local
- *
- * Mejora UI 2026:
- * - SOLO se mejora presentación visual
- * - No se toca estructura de datos ni endpoints
- * - Se refuerza estética dark + naranja tipo producto premium
- * - Las métricas principales pasan a tener más jerarquía
- * - La tabla gana legibilidad visual sin alterar contenido
- */
+type TeamWithBranding = {
+  jerseyUrl?: string;
+  homeJerseyUrl?: string;
+  awayJerseyUrl?: string;
+  homePrimaryColor?: string;
+  homeSecondaryColor?: string;
+  awayPrimaryColor?: string;
+  awaySecondaryColor?: string;
+};
+
+type PlayerMeta = {
+  name?: string;
+  dorsal?: number;
+  position?: string;
+  team?: string;
+  isRival?: boolean;
+};
+
+function JerseySvg({
+  number,
+  primary,
+  secondary,
+  accent = '#161a22',
+}: {
+  number?: number;
+  primary: string;
+  secondary: string;
+  accent?: string;
+}) {
+  const displayNumber = typeof number === 'number' ? number : '?';
+  const safeId = `profile-jersey-${displayNumber}-${primary.replace('#', '')}-${secondary.replace('#', '')}`;
+
+  return (
+    <svg
+      viewBox="0 0 180 210"
+      className="h-[150px] w-[116px] drop-shadow-[0_0_28px_rgba(255,106,0,0.18)]"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id={`${safeId}-grad`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={secondary} />
+          <stop offset="100%" stopColor={primary} />
+        </linearGradient>
+
+        <linearGradient id={`${safeId}-side`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.28" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.03" />
+        </linearGradient>
+      </defs>
+
+      <path
+        d="
+          M52 20
+          L72 10
+          L108 10
+          L128 20
+          L151 42
+          L139 70
+          L134 82
+          L134 184
+          Q134 195 123 195
+          L57 195
+          Q46 195 46 184
+          L46 82
+          L41 70
+          L29 42
+          Z
+        "
+        fill={`url(#${safeId}-grad)`}
+        stroke="#0f1218"
+        strokeWidth="5"
+        strokeLinejoin="round"
+      />
+
+      <path
+        d="M73 12 Q90 34 107 12"
+        fill="none"
+        stroke={accent}
+        strokeWidth="8"
+        strokeLinecap="round"
+      />
+
+      <path
+        d="M52 20 L29 42 L41 70"
+        fill="none"
+        stroke={accent}
+        strokeWidth="6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      <path
+        d="M128 20 L151 42 L139 70"
+        fill="none"
+        stroke={accent}
+        strokeWidth="6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      <path
+        d="M49 66 L64 78 L64 192 L57 192 Q49 192 49 184 Z"
+        fill={`url(#${safeId}-side)`}
+        opacity="0.7"
+      />
+
+      <path
+        d="M131 66 L116 78 L116 192 L123 192 Q131 192 131 184 Z"
+        fill={`url(#${safeId}-side)`}
+        opacity="0.35"
+      />
+
+      <text
+        x="90"
+        y="120"
+        textAnchor="middle"
+        fontSize="56"
+        fontWeight="900"
+        fill="#ffffff"
+        style={{
+          paintOrder: 'stroke',
+          stroke: '#111827',
+          strokeWidth: 3,
+          letterSpacing: '-2px',
+        }}
+      >
+        {displayNumber}
+      </text>
+    </svg>
+  );
+}
+
+function ClubJerseyImage({ jerseyUrl }: { jerseyUrl: string }) {
+  const [src, setSrc] = useState(jerseyUrl || '/america.jpg');
+
+  return (
+    <div className="flex items-center justify-center overflow-hidden rounded-[24px]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt="Camiseta"
+        className="h-[150px] w-[116px] object-contain"
+        onError={() => setSrc('/america.jpg')}
+      />
+    </div>
+  );
+}
+
+function TeamJersey({
+  number,
+  imageUrl,
+  primary,
+  secondary,
+}: {
+  number?: number;
+  imageUrl?: string;
+  primary: string;
+  secondary: string;
+}) {
+  if (imageUrl) {
+    return <ClubJerseyImage jerseyUrl={imageUrl} />;
+  }
+
+  return <JerseySvg number={number} primary={primary} secondary={secondary} />;
+}
 
 export default function PlayerProfile({ playerId }: { playerId: string }) {
+  const { user } = useAuth();
+
   const [averages, setAverages] = useState<CareerAverages | null>(null);
   const [games, setGames] = useState<GameStats[]>([]);
   const [allShots, setAllShots] = useState<Shot[]>([]);
   const [globalValue, setGlobalValue] = useState<number | null>(null);
+  const [playerMeta, setPlayerMeta] = useState<PlayerMeta | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const team = (user?.team as TeamWithBranding | undefined) ?? undefined;
+  const homeJerseyUrl = team?.homeJerseyUrl || team?.jerseyUrl || '';
+  const awayJerseyUrl = team?.awayJerseyUrl || '';
+  const homePrimaryColor = team?.homePrimaryColor || '#15803d';
+  const homeSecondaryColor = team?.homeSecondaryColor || '#22c55e';
+  const awayPrimaryColor = team?.awayPrimaryColor || '#1f2937';
+  const awaySecondaryColor = team?.awaySecondaryColor || '#6b7280';
 
   const exportToExcel = () => {
     if (games.length === 0) {
       toast.info('No hay partidos finalizados para exportar.');
       return;
     }
+
     const data = games.map((g) => ({
       Partido: g.session.name,
       Inicio: new Date(g.session.date).toLocaleString(),
@@ -143,8 +345,10 @@ export default function PlayerProfile({ playerId }: { playerId: string }) {
   useEffect(() => {
     async function fetchStats() {
       if (!playerId) return;
+
       try {
         setLoading(true);
+
         const [statsResponse, eventsResponse] = await Promise.all([
           fetch(`/api/players/${playerId}/stats`),
           fetch(`/api/game-events?playerId=${playerId}`),
@@ -157,9 +361,18 @@ export default function PlayerProfile({ playerId }: { playerId: string }) {
         }
 
         const { data: statsData } = await statsResponse.json();
+
         setAverages(statsData.careerAverages);
         setGames(statsData.gameByGameStats);
         setGlobalValue(statsData.globalValue);
+
+        setPlayerMeta({
+          name: statsData.player?.name,
+          dorsal: statsData.player?.dorsal,
+          position: statsData.player?.position,
+          team: statsData.player?.team,
+          isRival: statsData.player?.isRival,
+        });
 
         if (!eventsResponse.ok) {
           throw new Error('No se pudieron cargar los eventos de tiro.');
@@ -193,52 +406,20 @@ export default function PlayerProfile({ playerId }: { playerId: string }) {
   const StatCard = ({
     title,
     value,
-    featured = false,
+    accent = false,
   }: {
     title: string;
     value: string | number;
-    featured?: boolean;
+    accent?: boolean;
   }) => (
-    <div
-      className={`
-        group relative overflow-hidden rounded-[28px] border p-[1px] transition-all duration-300
-        ${
-          featured
-            ? 'border-orange-400/20 bg-[linear-gradient(180deg,rgba(255,140,66,0.18)_0%,rgba(255,255,255,0.04)_100%)] shadow-[0_18px_50px_rgba(255,106,0,0.10)]'
-            : 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.03)_100%)]'
-        }
-      `}
-    >
-      <div
-        className={`
-          relative h-full rounded-[27px] px-4 py-5 md:px-5 md:py-6
-          ${featured ? 'bg-[#16110d]/95' : 'bg-[#0f1117]/92'}
-        `}
-      >
-        <div className="pointer-events-none absolute inset-0 opacity-100">
-          {featured ? (
-            <>
-              <div className="absolute -left-6 top-1/2 h-24 w-24 -translate-y-1/2 rounded-full bg-orange-500/12 blur-3xl" />
-              <div className="absolute right-0 top-0 h-16 w-16 rounded-full bg-orange-400/10 blur-2xl" />
-            </>
-          ) : (
-            <div className="absolute right-0 top-0 h-14 w-14 rounded-full bg-white/5 blur-2xl" />
-          )}
-        </div>
-
-        <p
-          className={`relative text-[11px] font-semibold uppercase tracking-[0.24em] ${
-            featured ? 'text-orange-300/80' : 'text-white/45'
-          }`}
-        >
+    <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.03)_100%)] p-[1px]">
+      <div className="rounded-[23px] bg-[#0f1117]/95 px-4 py-4 text-center">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.20em] text-white/35">
           {title}
         </p>
-
         <p
-          className={`relative mt-3 tracking-tight ${
-            featured
-              ? 'text-4xl font-black text-white md:text-5xl'
-              : 'text-3xl font-extrabold text-white'
+          className={`mt-2 text-3xl font-black tracking-tight ${
+            accent ? 'text-orange-300' : 'text-white'
           }`}
         >
           {value}
@@ -249,7 +430,7 @@ export default function PlayerProfile({ playerId }: { playerId: string }) {
 
   if (loading) {
     return (
-      <div className="rounded-[28px] border border-white/10 bg-[#0f1117]/90 px-6 py-10 text-center text-white/70 shadow-[0_16px_50px_rgba(0,0,0,0.24)]">
+      <div className="flex min-h-[260px] items-center justify-center rounded-[28px] border border-white/10 bg-white/[0.03] text-white/60">
         Cargando perfil...
       </div>
     );
@@ -257,11 +438,16 @@ export default function PlayerProfile({ playerId }: { playerId: string }) {
 
   if (error) {
     return (
-      <div className="rounded-[28px] border border-red-500/20 bg-red-500/10 px-6 py-10 text-center text-red-300 shadow-[0_16px_50px_rgba(0,0,0,0.24)]">
+      <div className="rounded-[28px] border border-red-400/20 bg-red-500/10 px-6 py-5 text-red-300">
         {error}
       </div>
     );
   }
+
+  const isRival = playerMeta?.isRival ?? false;
+  const jerseyImageUrl = isRival ? awayJerseyUrl : homeJerseyUrl;
+  const jerseyPrimary = isRival ? awayPrimaryColor : homePrimaryColor;
+  const jerseySecondary = isRival ? awaySecondaryColor : homeSecondaryColor;
 
   const pageSize = 10;
   const totalPages = Math.ceil(games.length / pageSize);
@@ -272,240 +458,250 @@ export default function PlayerProfile({ playerId }: { playerId: string }) {
 
   return (
     <div className="space-y-8">
-      <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.03)_100%)] p-[1px] shadow-[0_24px_70px_rgba(0,0,0,0.30)]">
-        <div className="relative rounded-[31px] bg-[#0d1016]/95 px-5 py-6 md:px-6 md:py-7">
+      <section className="overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.03)_100%)] p-[1px] shadow-[0_24px_70px_rgba(0,0,0,0.30)]">
+        <div className="relative rounded-[31px] bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.14),transparent_22%),linear-gradient(180deg,rgba(14,20,32,0.98)_0%,rgba(8,13,23,1)_100%)] px-6 py-6 md:px-7 md:py-7">
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute left-0 top-0 h-32 w-32 rounded-full bg-orange-500/8 blur-3xl" />
+            <div className="absolute left-0 top-0 h-36 w-36 rounded-full bg-orange-500/10 blur-3xl" />
             <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-orange-400/8 blur-2xl" />
           </div>
 
-          <div className="relative mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-orange-300/75">
-                Perfil de rendimiento
-              </p>
-              <h2 className="mt-2 text-2xl font-black tracking-tight text-white md:text-3xl">
-                Resumen del jugador
-              </h2>
-              <p className="mt-1 text-sm text-white/45">
-                Promedios, evolución por partido y mapa de tiro consolidado.
-              </p>
+          <div className="relative z-10 grid gap-6 lg:grid-cols-[180px_1fr] lg:items-center">
+            <div className="flex justify-center">
+              <div className="flex h-[190px] w-[150px] items-center justify-center rounded-[28px] border border-white/10 bg-white/[0.04] shadow-inner shadow-black/20">
+                <TeamJersey
+                  number={playerMeta?.dorsal}
+                  imageUrl={jerseyImageUrl}
+                  primary={jerseyPrimary}
+                  secondary={jerseySecondary}
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-            <StatCard
-              title="Valor Global"
-              value={globalValue ?? '--'}
-              featured
-            />
-            <StatCard
-              title="Partidos Jugados"
-              value={averages?.totalGames || 0}
-            />
-            <StatCard
-              title="Puntos Por Partido"
-              value={averages?.avgPoints.toFixed(1) || '0.0'}
-            />
-            <StatCard
-              title="Valoración Promedio"
-              value={averages?.avgGameScore.toFixed(1) || '0.0'}
-            />
-            <StatCard
-              title="eFG% Promedio"
-              value={`${((averages?.avgEFG || 0) * 100).toFixed(1)}%`}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
-        <div className="xl:col-span-2">
-          <div className="overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.03)_100%)] p-[1px] shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
-            <div className="rounded-[29px] bg-[#0f1117]/95">
-              <div className="flex flex-col gap-4 border-b border-white/8 px-5 py-5 md:flex-row md:items-center md:justify-between md:px-6">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-300/75">
-                    Historial
-                  </p>
-                  <h3 className="mt-1 text-xl font-black tracking-tight text-white">
-                    Rendimiento partido a partido
-                  </h3>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="secondary"
-                    onClick={exportToExcel}
-                    className="flex items-center gap-2 border border-white/10 bg-white/5 text-white hover:bg-white/10"
-                  >
-                    <ArrowDownTrayIcon className="h-4 w-4" />
-                    Excel
-                  </Button>
-
-                  <Button
-                    variant="secondary"
-                    onClick={exportToPDF}
-                    className="flex items-center gap-2 border border-orange-400/20 bg-orange-500/10 text-orange-200 hover:bg-orange-500/15"
-                  >
-                    <ArrowDownTrayIcon className="h-4 w-4" />
-                    PDF
-                  </Button>
-                </div>
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-300">
+                Player Profile
+                {isRival ? (
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] tracking-[0.12em] text-white/65">
+                    Rival
+                  </span>
+                ) : null}
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead className="border-b border-white/8 bg-white/[0.03]">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
-                        Partido
-                      </th>
-                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
-                        VAL
-                      </th>
-                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
-                        PTS
-                      </th>
-                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
-                        AST
-                      </th>
-                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
-                        REB
-                      </th>
-                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
-                        STL
-                      </th>
-                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
-                        BLK
-                      </th>
-                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
-                        TOV
-                      </th>
-                      <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/45">
-                        PF
-                      </th>
-                    </tr>
-                  </thead>
+              <h1 className="text-[2rem] font-black tracking-[-0.04em] text-white md:text-[2.5rem] md:leading-[1.02]">
+                {playerMeta?.name || 'Jugador'}
+              </h1>
 
-                  <tbody className="divide-y divide-white/6">
-                    {paginatedGames.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={9}
-                          className="px-6 py-10 text-center text-sm text-white/45"
-                        >
-                          No hay partidos finalizados con estadísticas
-                          calculadas.
+              <p className="mt-2 text-sm leading-7 text-white/45 md:text-[15px]">
+                {playerMeta?.position || 'Sin posición'}
+                {playerMeta?.team ? ` · ${playerMeta.team}` : ''}
+              </p>
+
+              <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                <StatCard
+                  title="Valor Global"
+                  value={globalValue ?? '--'}
+                  accent
+                />
+                <StatCard
+                  title="Partidos Jugados"
+                  value={averages?.totalGames || 0}
+                />
+                <StatCard
+                  title="Puntos Por Partido"
+                  value={averages?.avgPoints.toFixed(1) || '0.0'}
+                />
+                <StatCard
+                  title="Valoración Promedio"
+                  value={averages?.avgGameScore.toFixed(1) || '0.0'}
+                />
+                <StatCard
+                  title="eFG% Promedio"
+                  value={`${((averages?.avgEFG || 0) * 100).toFixed(1)}%`}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.03)_100%)] p-[1px] lg:col-span-2">
+          <div className="rounded-[27px] bg-[#0f1117]/95">
+            <div className="flex flex-col gap-4 border-b border-white/10 px-5 py-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-300/75">
+                  Historial
+                </p>
+                <h3 className="mt-1 text-2xl font-black tracking-tight text-white">
+                  Rendimiento partido a partido
+                </h3>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={exportToExcel}
+                  className="flex items-center gap-2"
+                >
+                  <ArrowDownTrayIcon className="h-4 w-4" />
+                  Excel
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={exportToPDF}
+                  className="flex items-center gap-2"
+                >
+                  <ArrowDownTrayIcon className="h-4 w-4" />
+                  PDF
+                </Button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead className="border-b border-white/8 bg-white/[0.03]">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/35">
+                      Partido
+                    </th>
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/35">
+                      VAL
+                    </th>
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/35">
+                      PTS
+                    </th>
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/35">
+                      AST
+                    </th>
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/35">
+                      REB
+                    </th>
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/35">
+                      STL
+                    </th>
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/35">
+                      BLK
+                    </th>
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/35">
+                      TOV
+                    </th>
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/35">
+                      PF
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-white/6">
+                  {paginatedGames.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={9}
+                        className="px-6 py-8 text-center text-sm text-white/40"
+                      >
+                        No hay partidos finalizados con estadísticas calculadas.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedGames.map((game) => (
+                      <tr
+                        key={game._id}
+                        className="transition-colors hover:bg-white/[0.03]"
+                      >
+                        <td className="px-6 py-4 text-sm text-white/55">
+                          <p className="font-semibold text-white">
+                            {game.session.name}
+                          </p>
+                          <p>
+                            Inicio:{' '}
+                            {new Date(game.session.date).toLocaleString()}
+                          </p>
+                          {game.session.finishedAt && (
+                            <p>
+                              Fin:{' '}
+                              {new Date(
+                                game.session.finishedAt,
+                              ).toLocaleString()}
+                            </p>
+                          )}
+                        </td>
+
+                        <td className="px-6 py-4 text-sm font-bold text-orange-300">
+                          {game.gameScore.toFixed(1)}
+                        </td>
+
+                        <td className="px-6 py-4 text-sm font-medium text-white">
+                          {game.points}
+                        </td>
+
+                        <td className="px-6 py-4 text-sm text-white/55">
+                          {game.ast}
+                        </td>
+
+                        <td className="px-6 py-4 text-sm text-white/55">
+                          {game.orb + game.drb}
+                        </td>
+
+                        <td className="px-6 py-4 text-sm text-white/55">
+                          {game.stl}
+                        </td>
+
+                        <td className="px-6 py-4 text-sm text-white/55">
+                          {game.blk}
+                        </td>
+
+                        <td className="px-6 py-4 text-sm text-white/55">
+                          {game.tov}
+                        </td>
+
+                        <td className="px-6 py-4 text-sm text-white/55">
+                          {game.pf}
                         </td>
                       </tr>
-                    ) : (
-                      paginatedGames.map((game) => (
-                        <tr
-                          key={game._id}
-                          className="transition-colors hover:bg-white/[0.03]"
-                        >
-                          <td className="px-6 py-4 text-sm text-white/55">
-                            <p className="font-bold text-white">
-                              {game.session.name}
-                            </p>
-                            <p className="mt-1 text-xs text-white/40">
-                              Inicio:{' '}
-                              {new Date(game.session.date).toLocaleString()}
-                            </p>
-                            {game.session.finishedAt && (
-                              <p className="text-xs text-white/35">
-                                Fin:{' '}
-                                {new Date(
-                                  game.session.finishedAt,
-                                ).toLocaleString()}
-                              </p>
-                            )}
-                          </td>
-
-                          <td className="px-6 py-4 text-sm">
-                            <span className="inline-flex min-w-[58px] items-center justify-center rounded-xl border border-orange-400/20 bg-orange-500/10 px-3 py-1.5 text-sm font-extrabold text-orange-300">
-                              {game.gameScore.toFixed(1)}
-                            </span>
-                          </td>
-
-                          <td className="px-6 py-4 text-sm font-bold text-white">
-                            {game.points}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-white/60">
-                            {game.ast}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-white/60">
-                            {game.orb + game.drb}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-white/60">
-                            {game.stl}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-white/60">
-                            {game.blk}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-white/60">
-                            {game.tov}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-white/60">
-                            {game.pf}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {totalPages > 1 && (
-                <div className="flex flex-col gap-3 border-t border-white/8 px-5 py-4 md:flex-row md:items-center md:justify-between md:px-6">
-                  <Button
-                    variant="secondary"
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="border border-white/10 bg-white/5 text-white hover:bg-white/10 disabled:opacity-40"
-                  >
-                    Anterior
-                  </Button>
-
-                  <span className="text-sm text-white/45">
-                    Página {currentPage} de {totalPages}
-                  </span>
-
-                  <Button
-                    variant="secondary"
-                    onClick={() =>
-                      setCurrentPage((p) => Math.min(totalPages, p + 1))
-                    }
-                    disabled={currentPage === totalPages}
-                    className="border border-white/10 bg-white/5 text-white hover:bg-white/10 disabled:opacity-40"
-                  >
-                    Siguiente
-                  </Button>
-                </div>
-              )}
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-white/10 px-5 py-4">
+                <Button
+                  variant="secondary"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Anterior
+                </Button>
+
+                <span className="text-sm text-white/45">
+                  Página {currentPage} de {totalPages}
+                </span>
+
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="xl:col-span-1">
-          <div className="overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.03)_100%)] p-[1px] shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
-            <div className="rounded-[29px] bg-[#0f1117]/95">
-              <div className="border-b border-white/8 px-5 py-5 md:px-6">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-300/75">
-                  Shot chart
-                </p>
-                <h3 className="mt-1 text-xl font-black tracking-tight text-white">
-                  Mapa de tiro
-                </h3>
-                <p className="mt-1 text-sm text-white/45">
-                  Distribución consolidada de lanzamientos del jugador.
-                </p>
-              </div>
+        <div className="overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.03)_100%)] p-[1px]">
+          <div className="rounded-[27px] bg-[#0f1117]/95 px-5 py-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-300/75">
+              Shot Chart
+            </p>
+            <h3 className="mt-1 text-2xl font-black tracking-tight text-white">
+              Mapa de tiro
+            </h3>
 
-              <div className="p-4 md:p-5">
-                <ShotChart shots={allShots} title="Mapa de Tiro (Carrera)" />
-              </div>
+            <div className="mt-5">
+              <ShotChart shots={allShots} title="Mapa de Tiro (Carrera)" />
             </div>
           </div>
         </div>
