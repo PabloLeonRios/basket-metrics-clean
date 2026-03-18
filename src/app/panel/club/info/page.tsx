@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { ITeam } from '@/types/definitions';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { toast } from 'react-toastify';
@@ -45,19 +46,13 @@ import { toast } from 'react-toastify';
  *   1) dataURL (archivo subido)
  *   2) URL externa
  * - no perder jerseyUrl viejo hasta migrar todo el frontend
+ *
+ * Ajuste frontend 2026:
+ * - se elimina TeamWithAssets local
+ * - se usa directamente ITeam
+ * - no se toca backend
+ * - no se rompe compatibilidad legacy
  */
-
-type TeamWithAssets = {
-  _id?: string;
-  logoUrl?: string;
-  jerseyUrl?: string; // legacy
-  homeJerseyUrl?: string;
-  awayJerseyUrl?: string;
-  homePrimaryColor?: string;
-  homeSecondaryColor?: string;
-  awayPrimaryColor?: string;
-  awaySecondaryColor?: string;
-};
 
 function JerseyPreviewSvg({
   primary,
@@ -69,11 +64,7 @@ function JerseyPreviewSvg({
   const safeId = `${primary.replace('#', '')}-${secondary.replace('#', '')}`;
 
   return (
-    <svg
-      viewBox="0 0 180 210"
-      className="h-full w-full"
-      aria-hidden="true"
-    >
+    <svg viewBox="0 0 180 210" className="h-full w-full" aria-hidden="true">
       <defs>
         <linearGradient id={`grad-${safeId}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={secondary} />
@@ -379,7 +370,7 @@ export default function ClubInfoPage() {
   const awayJerseyInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const team = (user?.team as TeamWithAssets | undefined) ?? undefined;
+    const team: ITeam | undefined = user?.team;
 
     if (team?.logoUrl) {
       setLogoUrl(team.logoUrl);
@@ -654,7 +645,11 @@ export default function ClubInfoPage() {
             />
 
             <div className="border-t border-white/10 pt-4">
-              <Button type="submit" disabled={loading} className="w-full md:w-auto">
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full md:w-auto"
+              >
                 {loading ? 'Guardando...' : 'Guardar cambios'}
               </Button>
             </div>
