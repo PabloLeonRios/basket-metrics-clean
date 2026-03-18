@@ -1,4 +1,4 @@
-﻿// src/hooks/useAuth.ts
+// src/hooks/useAuth.ts
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,7 +10,7 @@ export interface AuthUser {
   email: string;
   role: 'entrenador' | 'jugador' | 'admin';
   isActive: boolean;
-  team?: ITeam & { logoUrl?: string };
+  team?: ITeam;
   createdAt: string;
   updatedAt: string;
 }
@@ -20,16 +20,29 @@ export interface AuthUser {
  * NOTAS PARA PABLITO (DEV MODE / useAuth)
  * ==========================================
  *
- * Pablo está trabajando en el rediseño visual del frontend.
- * En desarrollo este hook devuelve un usuario falso para evitar
- * depender del login real.
+ * Pablo está trabajando en el rediseño visual y en el flujo funcional
+ * del frontend sin tocar backend por ahora.
  *
- * DEVELOPMENT:
- * - devuelve DEV_USER
- * - no llama a /api/auth/me
+ * Objetivo de este ajuste:
+ * - mantener DEV_USER en desarrollo
+ * - pero devolver un team más completo para que funcionen:
+ *   - Mi Club
+ *   - Dashboard
+ *   - Players
+ *   - PlayerProfile
+ *
+ * IMPORTANTE:
+ * - esto NO agrega persistencia real
+ * - esto NO modifica endpoints
+ * - esto NO reemplaza el futuro flujo con Mongo
+ * - solo evita que el frontend quede “vacío” o inconsistente en dev
  *
  * PRODUCCIÓN:
- * - sigue usando el flujo real
+ * - sigue usando /api/auth/me
+ *
+ * DESARROLLO:
+ * - devuelve DEV_USER
+ * - con contrato Team alineado al branding actual
  */
 
 const DEV_USER: AuthUser = {
@@ -41,8 +54,21 @@ const DEV_USER: AuthUser = {
   team: {
     _id: 'dev-team',
     name: 'Dev Team',
+
+    // branding base
     logoUrl: '',
-  } as AuthUser['team'],
+
+    // legacy
+    jerseyUrl: '',
+
+    // branding nuevo
+    homeJerseyUrl: '',
+    awayJerseyUrl: '',
+    homePrimaryColor: '#15803d',
+    homeSecondaryColor: '#22c55e',
+    awayPrimaryColor: '#1f2937',
+    awaySecondaryColor: '#6b7280',
+  },
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
