@@ -359,7 +359,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <section
         className={`${shellClassName()} overflow-hidden px-6 py-5 md:px-8 md:py-6`}
       >
