@@ -32,6 +32,11 @@
  *   2) away palette
  *   3) fallback demo
  *
+ * Ajuste frontend 2026:
+ * - se elimina TeamWithBranding local
+ * - se usa directamente ITeam
+ * - se mantiene compatibilidad con jerseyUrl legacy
+ *
  * Próximo paso ideal futuro:
  * - reemplazar esta lógica client-side por:
  *   GET /api/dashboard/overview
@@ -42,16 +47,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, ArrowRight, ClipboardList, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-
-type TeamWithBranding = {
-  jerseyUrl?: string;
-  homeJerseyUrl?: string;
-  awayJerseyUrl?: string;
-  homePrimaryColor?: string;
-  homeSecondaryColor?: string;
-  awayPrimaryColor?: string;
-  awaySecondaryColor?: string;
-};
+import { ITeam } from '@/types/definitions';
 
 type DashboardPlayer = {
   id: string;
@@ -423,7 +419,7 @@ function TopPlayerCard({
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const team = (user?.team as TeamWithBranding | undefined) ?? undefined;
+  const team: ITeam | undefined = user?.team;
 
   const homeJerseyUrl = team?.homeJerseyUrl || team?.jerseyUrl || '';
   const awayJerseyUrl = team?.awayJerseyUrl || '';
@@ -498,6 +494,7 @@ export default function DashboardPage() {
     }
 
     const ownPlayers = players.filter((p) => !p.isRival);
+
     return {
       players: players.length,
       sessions: demoPanelStats.sessions,
@@ -510,7 +507,10 @@ export default function DashboardPage() {
       return demoTopPlayers;
     }
 
-    const list = [...players].sort((a, b) => b.efficiency - a.efficiency).slice(0, 3);
+    const list = [...players]
+      .sort((a, b) => b.efficiency - a.efficiency)
+      .slice(0, 3);
+
     return list.length ? list : demoTopPlayers;
   }, [players, playersReady]);
 
