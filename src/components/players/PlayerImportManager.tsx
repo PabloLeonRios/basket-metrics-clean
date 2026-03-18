@@ -21,6 +21,28 @@ interface ExcelPlayerRow {
   'Es Rival'?: string;
 }
 
+/**
+ * ============================================================
+ * PLAYER IMPORT MANAGER
+ * ============================================================
+ *
+ * NOTAS PARA PABLITO (Mongo / Backend futuro)
+ *
+ * Lógica actual:
+ * - descarga plantilla local con xlsx
+ * - lee archivo Excel local
+ * - valida filas / límite / formato
+ * - POST /api/players/import
+ * - exporta todos los jugadores con GET /api/players
+ *
+ * Mejora UI 2026:
+ * - SOLO cambia presentación visual
+ * - NO se toca lógica de importación
+ * - NO se toca lógica de exportación
+ * - NO se toca lectura de Excel
+ * - Se alinea estética con Players / Dashboard / Panel
+ */
+
 export default function PlayerImportManager() {
   const { user } = useAuth();
   const router = useRouter();
@@ -61,6 +83,7 @@ export default function PlayerImportManager() {
 
   const handleImport = async (e: FormEvent) => {
     e.preventDefault();
+
     if (!selectedFile) {
       toast.error('Por favor selecciona un archivo Excel.');
       return;
@@ -150,14 +173,22 @@ export default function PlayerImportManager() {
     }
 
     setIsExporting(true);
+
     try {
-      // Fetch both mine and rivals without limits
       const [mineRes, rivalsRes] = await Promise.all([
         fetch(
-          `/api/players?coachId=${user._id}&teamType=mine&limit=1000${user.team?.name ? `&userTeamName=${encodeURIComponent(user.team.name)}` : ''}`,
+          `/api/players?coachId=${user._id}&teamType=mine&limit=1000${
+            user.team?.name
+              ? `&userTeamName=${encodeURIComponent(user.team.name)}`
+              : ''
+          }`,
         ),
         fetch(
-          `/api/players?coachId=${user._id}&teamType=rivals&limit=1000${user.team?.name ? `&userTeamName=${encodeURIComponent(user.team.name)}` : ''}`,
+          `/api/players?coachId=${user._id}&teamType=rivals&limit=1000${
+            user.team?.name
+              ? `&userTeamName=${encodeURIComponent(user.team.name)}`
+              : ''
+          }`,
         ),
       ]);
 
@@ -202,153 +233,202 @@ export default function PlayerImportManager() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-md">
-        <h2 className="text-xl font-bold mb-4">
-          Paso 1: Descargar Plantilla Base
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          Para importar jugadores correctamente, debes utilizar el archivo de
-          plantilla base. Este archivo contiene las cabeceras exactas (Nombre,
-          Dorsal, Posición, Equipo, Es Rival) y un ejemplo visual de cómo
-          llenarlo.
-        </p>
-        <div className="overflow-x-auto mb-4 border rounded-lg border-gray-200 dark:border-gray-700">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Nombre
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Dorsal
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Posición
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Equipo
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Es Rival
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-              <tr>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  Michael Jordan
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  23
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  Escolta
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  Chicago Bulls
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  NO
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <Button
-          onClick={handleDownloadTemplate}
-          variant="secondary"
-          className="flex items-center gap-2"
-        >
-          <ArrowDownTrayIcon className="w-5 h-5" />
-          Descargar Plantilla Excel
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.03)_100%)] p-[1px] shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
+          <div className="relative h-full rounded-[29px] bg-[#0f1117]/95 px-5 py-6 md:px-6 md:py-7">
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute left-0 top-0 h-28 w-28 rounded-full bg-orange-500/8 blur-3xl" />
+            </div>
 
-      <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-md">
-        <h2 className="text-xl font-bold mb-4">Paso 2: Subir Archivo</h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          Una vez hayas completado la plantilla (máximo 30 jugadores), súbela
-          aquí.
-          <strong> Nota:</strong> Los jugadores importados se crearán por
-          defecto en estado &quot;Activo&quot;.
-        </p>
-        <form onSubmit={handleImport} className="space-y-4">
-          <div className="flex items-center justify-center w-full">
-            <label
-              htmlFor="dropzone-file"
-              className="flex flex-col items-center justify-center w-full h-40 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-800 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-700"
-            >
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <DocumentArrowUpIcon className="w-10 h-10 mb-3 text-gray-400" />
-                <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                  <span className="font-semibold">Haz clic para subir</span> o
-                  arrastra y suelta
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Solo archivos .xlsx o .xls
-                </p>
+            <div className="relative">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-300/75">
+                Paso 1
+              </p>
+              <h2 className="mt-1 text-2xl font-black tracking-tight text-white">
+                Descargar plantilla base
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-white/45">
+                Usá la plantilla oficial para importar jugadores correctamente.
+                El archivo ya incluye las cabeceras exactas y ejemplos visuales
+                de carga.
+              </p>
+
+              <div className="mt-5 overflow-x-auto rounded-[24px] border border-white/10 bg-white/[0.03]">
+                <table className="min-w-full">
+                  <thead className="border-b border-white/8 bg-white/[0.03]">
+                    <tr>
+                      <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/40">
+                        Nombre
+                      </th>
+                      <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/40">
+                        Dorsal
+                      </th>
+                      <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/40">
+                        Posición
+                      </th>
+                      <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/40">
+                        Equipo
+                      </th>
+                      <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.20em] text-white/40">
+                        Es Rival
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-white/6">
+                    <tr className="transition-colors hover:bg-white/[0.03]">
+                      <td className="px-5 py-4 text-sm font-semibold text-white">
+                        Michael Jordan
+                      </td>
+                      <td className="px-5 py-4 text-sm text-white/60">23</td>
+                      <td className="px-5 py-4 text-sm text-white/60">
+                        Escolta
+                      </td>
+                      <td className="px-5 py-4 text-sm text-white/60">
+                        Chicago Bulls
+                      </td>
+                      <td className="px-5 py-4 text-sm text-white/60">NO</td>
+                    </tr>
+
+                    <tr className="transition-colors hover:bg-white/[0.03]">
+                      <td className="px-5 py-4 text-sm font-semibold text-white">
+                        Larry Bird
+                      </td>
+                      <td className="px-5 py-4 text-sm text-white/60">33</td>
+                      <td className="px-5 py-4 text-sm text-white/60">
+                        Alero
+                      </td>
+                      <td className="px-5 py-4 text-sm text-white/60">
+                        Boston Celtics
+                      </td>
+                      <td className="px-5 py-4 text-sm text-white/60">SI</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-              <input
-                id="dropzone-file"
-                type="file"
-                className="hidden"
-                accept=".xlsx, .xls"
-                onChange={handleFileChange}
-                ref={fileInputRef}
-              />
-            </label>
+
+              <div className="mt-5">
+                <Button
+                  onClick={handleDownloadTemplate}
+                  variant="secondary"
+                  className="flex w-full items-center justify-center gap-2 sm:w-auto"
+                >
+                  <ArrowDownTrayIcon className="h-5 w-5" />
+                  Descargar plantilla Excel
+                </Button>
+              </div>
+            </div>
           </div>
-          {selectedFile && (
-            <p className="text-sm text-green-600 dark:text-green-400">
-              Archivo seleccionado: {selectedFile.name}
-            </p>
-          )}
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={!selectedFile || isSubmitting}
-            className="flex items-center justify-center gap-2 w-full sm:w-auto"
-          >
-            <ArrowUpTrayIcon className="w-5 h-5" />
-            {isSubmitting ? 'Importando...' : 'Importar Jugadores'}
-          </Button>
-        </form>
+        </div>
+
+        <div className="overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.03)_100%)] p-[1px] shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
+          <div className="relative h-full rounded-[29px] bg-[#0f1117]/95 px-5 py-6 md:px-6 md:py-7">
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-orange-400/8 blur-2xl" />
+            </div>
+
+            <div className="relative">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-300/75">
+                Paso 2
+              </p>
+              <h2 className="mt-1 text-2xl font-black tracking-tight text-white">
+                Subir archivo
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-white/45">
+                Una vez completada la plantilla, cargala acá. Límite máximo:{' '}
+                <span className="font-semibold text-orange-300">
+                  30 jugadores
+                </span>
+                . Los jugadores importados se crearán en estado activo.
+              </p>
+
+              <form onSubmit={handleImport} className="mt-5 space-y-4">
+                <div className="flex items-center justify-center">
+                  <label
+                    htmlFor="dropzone-file"
+                    className="group flex h-52 w-full cursor-pointer flex-col items-center justify-center rounded-[26px] border-2 border-dashed border-white/10 bg-white/[0.03] px-6 text-center transition-all duration-300 hover:border-orange-400/30 hover:bg-white/[0.05]"
+                  >
+                    <DocumentArrowUpIcon className="mb-4 h-11 w-11 text-white/35 transition group-hover:text-orange-300" />
+                    <p className="text-sm text-white/55">
+                      <span className="font-semibold text-white">
+                        Haz clic para subir
+                      </span>{' '}
+                      o arrastra y suelta
+                    </p>
+                    <p className="mt-2 text-xs uppercase tracking-[0.18em] text-white/30">
+                      Solo archivos .xlsx o .xls
+                    </p>
+
+                    <input
+                      id="dropzone-file"
+                      type="file"
+                      className="hidden"
+                      accept=".xlsx, .xls"
+                      onChange={handleFileChange}
+                      ref={fileInputRef}
+                    />
+                  </label>
+                </div>
+
+                {selectedFile ? (
+                  <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+                    Archivo seleccionado: <strong>{selectedFile.name}</strong>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/40">
+                    Todavía no seleccionaste ningún archivo.
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={!selectedFile || isSubmitting}
+                  className="flex w-full items-center justify-center gap-2 sm:w-auto"
+                >
+                  <ArrowUpTrayIcon className="h-5 w-5" />
+                  {isSubmitting ? 'Importando...' : 'Importar jugadores'}
+                </Button>
+              </form>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-md border border-orange-200 dark:border-orange-800">
-        <h2 className="text-xl font-bold mb-4 text-orange-700 dark:text-orange-500">
-          Exportar Todos los Jugadores
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          Descarga un archivo Excel con <strong>todos los jugadores</strong>{' '}
-          asignados a tu cuenta, incluyendo tanto los de tu equipo como los
-          rivales.
-        </p>
-        <Button
-          onClick={handleExportAll}
-          variant="secondary"
-          disabled={isExporting}
-          className="flex items-center gap-2 w-full sm:w-auto"
-        >
-          <ArrowDownTrayIcon className="w-5 h-5" />
-          {isExporting ? 'Exportando...' : 'Exportar Lista Completa'}
-        </Button>
+      <div className="overflow-hidden rounded-[30px] border border-orange-400/15 bg-[linear-gradient(180deg,rgba(255,140,66,0.14)_0%,rgba(255,255,255,0.03)_100%)] p-[1px] shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
+        <div className="relative rounded-[29px] bg-[#15110d]/96 px-5 py-6 md:px-6 md:py-7">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute left-0 top-0 h-28 w-28 rounded-full bg-orange-500/10 blur-3xl" />
+          </div>
+
+          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-300/80">
+                Exportación
+              </p>
+              <h2 className="mt-1 text-2xl font-black tracking-tight text-white">
+                Exportar todos los jugadores
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-white/50">
+                Descargá un Excel con todos los jugadores asociados a tu cuenta,
+                incluyendo plantel propio y rivales, junto con su estado actual.
+              </p>
+            </div>
+
+            <div className="flex shrink-0">
+              <Button
+                onClick={handleExportAll}
+                variant="secondary"
+                disabled={isExporting}
+                className="flex w-full items-center justify-center gap-2 sm:w-auto"
+              >
+                <ArrowDownTrayIcon className="h-5 w-5" />
+                {isExporting ? 'Exportando...' : 'Exportar lista completa'}
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
