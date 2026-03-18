@@ -1,8 +1,52 @@
 'use client';
 
+import Link from 'next/link';
 import { ChevronRight, Search, Shield, Swords, Users2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+
+/**
+ * ============================================================
+ * PLAYER MANAGER
+ * ============================================================
+ *
+ * NOTAS PARA PABLITO (Mongo / listado frontend)
+ * ---------------------------------------------
+ * Objetivo de este ajuste:
+ * - dejar de depender de demoPlayers hardcodeado
+ * - intentar consumir el listado real desde /api/players
+ * - mantener intacta la UX visual premium que Pablo ya aprobó
+ * - no tocar backend ni exigir cambios server-side ahora
+ *
+ * Estrategia:
+ * - fetch client-side a /api/players
+ * - mapping tolerante a distintos nombres de campos
+ * - si el endpoint falla o no devuelve lista usable:
+ *   se cae a demoPlayers para no romper la pantalla
+ *
+ * Compatibilidad contemplada:
+ * - _id o id
+ * - dorsal o number
+ * - position o posicion
+ * - team string / team object / sin team
+ * - isRival explícito
+ *
+ * Branding de camisetas:
+ * - equipo propio:
+ *   1) homeJerseyUrl
+ *   2) home palette
+ *   3) fallback demo
+ * - rival:
+ *   1) awayJerseyUrl
+ *   2) away palette
+ *   3) fallback demo
+ *
+ * Futuro ideal con Mongo:
+ * - mover fetch a service dedicado
+ * - filtros server-side
+ * - paginación real
+ * - tabs / conteos reales
+ */
 
 interface Player {
   id: string;
@@ -23,41 +67,6 @@ type TeamWithBranding = {
   awayPrimaryColor?: string;
   awaySecondaryColor?: string;
 };
-
-/**
- * ============================================================
- * PLAYER MANAGER
- * ============================================================
- *
- * NOTAS PARA PABLITO (Mongo)
- * --------------------------
- * Regla visual actual:
- * - equipo propio:
- *   1) homeJerseyUrl
- *   2) home palette
- *   3) fallback demo
- * - rival:
- *   1) awayJerseyUrl
- *   2) away palette
- *   3) fallback demo
- *
- * Campos esperados en Team:
- * - jerseyUrl?: string // legacy
- * - homeJerseyUrl?: string
- * - awayJerseyUrl?: string
- * - homePrimaryColor?: string
- * - homeSecondaryColor?: string
- * - awayPrimaryColor?: string
- * - awaySecondaryColor?: string
- *
- * Ajuste visual:
- * - la camiseta real NO lleva número superpuesto
- * - la SVG sí puede mostrar número
- *
- * Futuro:
- * - reemplazar demoPlayers por fetch real
- * - filtros server-side / tabs reales
- */
 
 const demoPlayers: Player[] = [
   {
@@ -88,6 +97,41 @@ const demoPlayers: Player[] = [
     isRival: true,
   },
 ];
+
+function normalizePlayer(raw: any): Player | null {
+  const id = raw?._id || raw?.id;
+  if (!id) return null;
+
+  const teamName =
+    typeof raw?.team === 'string'
+      ? raw.team
+      : raw?.team?.name || raw?.teamName || undefined;
+
+  const numberRaw = raw?.dorsal ?? raw?.number ?? raw?.numero;
+  const number =
+    typeof numberRaw === 'number'
+      ? numberRaw
+      : typeof numberRaw === 'string' && numberRaw.trim() !== ''
+        ? Number(numberRaw)
+        : undefined;
+
+  return {
+    id: String(id),
+    name: raw?.name || raw?.nombre || 'Jugador sin nombre',
+    position: raw?.position || raw?.posicion || 'Sin posición',
+    team: teamName,
+    number: Number.isFinite(number) ? number : undefined,
+    score:
+      typeof raw?.score === 'number'
+        ? raw.score
+        : typeof raw?.efficiency === 'number'
+          ? raw.efficiency
+          : typeof raw?.gameScore === 'number'
+            ? raw.gameScore
+            : 0,
+    isRival: Boolean(raw?.isRival),
+  };
+}
 
 function JerseySvg({
   number,
@@ -209,6 +253,7 @@ function ClubJerseyImage({ jerseyUrl }: { jerseyUrl: string }) {
   const [src, setSrc] = useState(jerseyUrl || '/america.jpg');
 
   return (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
       alt="Camiseta"
@@ -247,11 +292,11 @@ function ScoreBadge({ score }: { score?: number }) {
   return (
     <div
       className="
-        px-4 py-2 rounded-xl
-        bg-orange-500/10 border border-orange-400/20
-        text-orange-300 font-bold text-xl
+        rounded-xl border border-orange-400/20
+        bg-orange-500/10 px-4 py-2
+        text-xl font-bold text-orange-300
         transition-all duration-300
-        group-hover:bg-orange-500/20 group-hover:border-orange-300/40
+        group-hover:border-orange-300/40 group-hover:bg-orange-500/20
       "
     >
       +{value}
@@ -281,10 +326,12 @@ function PlayerCard({
   const secondary = player.isRival ? awaySecondaryColor : homeSecondaryColor;
 
   return (
-    <div
+    <Link
+      href={`/panel/players/${player.id}`}
       className="
-        group relative rounded-2xl border border-white/10 bg-white/[0.03]
-        px-5 py-4 flex items-center justify-between transition-all duration-300
+        group relative flex items-center justify-between rounded-2xl
+        border border-white/10 bg-white/[0.03]
+        px-5 py-4 transition-all duration-300
         hover:-translate-y-1 hover:border-orange-400/30 hover:bg-white/[0.05]
         hover:shadow-[0_10px_40px_rgba(255,100,0,0.15)]
       "
@@ -296,8 +343,8 @@ function PlayerCard({
       <div className="relative flex items-center gap-4">
         <div
           className="
-            h-24 w-24 flex items-center justify-center
-            rounded-xl border border-white/10 bg-white/[0.04]
+            flex h-24 w-24 items-center justify-center rounded-xl
+            border border-white/10 bg-white/[0.04]
             transition-all duration-300 group-hover:border-orange-400/20
           "
         >
@@ -311,7 +358,7 @@ function PlayerCard({
 
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-white font-extrabold text-lg">{player.name}</p>
+            <p className="text-lg font-extrabold text-white">{player.name}</p>
 
             {player.isRival && (
               <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/60">
@@ -335,7 +382,7 @@ function PlayerCard({
 
         <div
           className="
-            h-10 w-10 flex items-center justify-center rounded-full
+            flex h-10 w-10 items-center justify-center rounded-full
             border border-white/10 bg-white/[0.04] transition-all duration-300
             group-hover:border-orange-400/30 group-hover:bg-orange-500/10
           "
@@ -343,7 +390,7 @@ function PlayerCard({
           <ChevronRight className="text-white/40 transition-all group-hover:translate-x-1 group-hover:text-orange-300" />
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -405,16 +452,74 @@ export default function PlayerManager() {
   const awaySecondaryColor = team?.awaySecondaryColor || '#6b7280';
 
   const [search, setSearch] = useState('');
+  const [players, setPlayers] = useState<Player[]>(demoPlayers);
+  const [loading, setLoading] = useState(true);
+  const [usingFallback, setUsingFallback] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function fetchPlayers() {
+      try {
+        setLoading(true);
+        setUsingFallback(false);
+
+        const response = await fetch('/api/players', {
+          cache: 'no-store',
+        });
+
+        if (!response.ok) {
+          throw new Error('No se pudo cargar el roster.');
+        }
+
+        const json = await response.json();
+        const rawList = Array.isArray(json)
+          ? json
+          : Array.isArray(json?.data)
+            ? json.data
+            : Array.isArray(json?.players)
+              ? json.players
+              : [];
+
+        const normalized = rawList
+          .map(normalizePlayer)
+          .filter(Boolean) as Player[];
+
+        if (!normalized.length) {
+          throw new Error('El endpoint no devolvió jugadores utilizables.');
+        }
+
+        if (!active) return;
+        setPlayers(normalized);
+      } catch (error) {
+        console.error(error);
+        if (!active) return;
+        setPlayers(demoPlayers);
+        setUsingFallback(true);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    fetchPlayers();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filteredPlayers = useMemo(() => {
-    const q = search.toLowerCase();
-    return demoPlayers.filter(
+    const q = search.toLowerCase().trim();
+
+    if (!q) return players;
+
+    return players.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
         p.position.toLowerCase().includes(q) ||
         (p.team || '').toLowerCase().includes(q),
     );
-  }, [search]);
+  }, [players, search]);
 
   const ownPlayers = filteredPlayers.filter((p) => !p.isRival);
   const rivalPlayers = filteredPlayers.filter((p) => p.isRival);
@@ -434,9 +539,17 @@ export default function PlayerManager() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar jugador..."
-              className="w-full rounded-lg border border-white/10 bg-white/[0.04] py-2 pl-9 pr-3 text-white"
+              className="w-full rounded-lg border border-white/10 bg-white/[0.04] py-2 pl-9 pr-3 text-white outline-none"
             />
           </div>
+
+          <p className="mt-3 text-xs text-white/35">
+            {loading
+              ? 'Cargando jugadores...'
+              : usingFallback
+                ? 'Mostrando datos demo porque el listado real no estuvo disponible.'
+                : 'Mostrando listado real del roster.'}
+          </p>
         </div>
 
         <div className="grid grid-cols-3 gap-3">
@@ -446,16 +559,8 @@ export default function PlayerManager() {
             value={filteredPlayers.length}
             tone="accent"
           />
-          <SummaryCard
-            icon={Shield}
-            label="Propios"
-            value={ownPlayers.length}
-          />
-          <SummaryCard
-            icon={Swords}
-            label="Rivales"
-            value={rivalPlayers.length}
-          />
+          <SummaryCard icon={Shield} label="Propios" value={ownPlayers.length} />
+          <SummaryCard icon={Swords} label="Rivales" value={rivalPlayers.length} />
         </div>
       </div>
 
@@ -463,19 +568,26 @@ export default function PlayerManager() {
         <h3 className="mb-3 text-xl font-bold text-white">
           Jugadores del club
         </h3>
+
         <div className="space-y-3">
-          {ownPlayers.map((p) => (
-            <PlayerCard
-              key={p.id}
-              player={p}
-              homeJerseyUrl={homeJerseyUrl}
-              awayJerseyUrl={awayJerseyUrl}
-              homePrimaryColor={homePrimaryColor}
-              homeSecondaryColor={homeSecondaryColor}
-              awayPrimaryColor={awayPrimaryColor}
-              awaySecondaryColor={awaySecondaryColor}
-            />
-          ))}
+          {ownPlayers.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-6 text-sm text-white/45">
+              No hay jugadores propios para mostrar.
+            </div>
+          ) : (
+            ownPlayers.map((p) => (
+              <PlayerCard
+                key={p.id}
+                player={p}
+                homeJerseyUrl={homeJerseyUrl}
+                awayJerseyUrl={awayJerseyUrl}
+                homePrimaryColor={homePrimaryColor}
+                homeSecondaryColor={homeSecondaryColor}
+                awayPrimaryColor={awayPrimaryColor}
+                awaySecondaryColor={awaySecondaryColor}
+              />
+            ))
+          )}
         </div>
       </div>
 
@@ -483,19 +595,26 @@ export default function PlayerManager() {
         <h3 className="mb-3 text-xl font-bold text-white">
           Jugadores rivales
         </h3>
+
         <div className="space-y-3">
-          {rivalPlayers.map((p) => (
-            <PlayerCard
-              key={p.id}
-              player={p}
-              homeJerseyUrl={homeJerseyUrl}
-              awayJerseyUrl={awayJerseyUrl}
-              homePrimaryColor={homePrimaryColor}
-              homeSecondaryColor={homeSecondaryColor}
-              awayPrimaryColor={awayPrimaryColor}
-              awaySecondaryColor={awaySecondaryColor}
-            />
-          ))}
+          {rivalPlayers.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-6 text-sm text-white/45">
+              No hay jugadores rivales para mostrar.
+            </div>
+          ) : (
+            rivalPlayers.map((p) => (
+              <PlayerCard
+                key={p.id}
+                player={p}
+                homeJerseyUrl={homeJerseyUrl}
+                awayJerseyUrl={awayJerseyUrl}
+                homePrimaryColor={homePrimaryColor}
+                homeSecondaryColor={homeSecondaryColor}
+                awayPrimaryColor={awayPrimaryColor}
+                awaySecondaryColor={awaySecondaryColor}
+              />
+            ))
+          )}
         </div>
       </div>
     </div>
