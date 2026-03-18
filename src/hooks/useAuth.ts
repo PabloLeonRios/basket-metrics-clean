@@ -1,7 +1,7 @@
 // src/hooks/useAuth.ts
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ITeam } from '@/types/definitions';
 
 export interface AuthUser {
@@ -17,33 +17,91 @@ export interface AuthUser {
 
 /**
  * ==========================================
- * NOTAS PARA PABLITO (DEV MODE / useAuth)
+ * NOTAS PARA PABLITO (DEV MODE / DEMO MODE)
  * ==========================================
  *
  * Pablo está trabajando en el rediseño visual y en el flujo funcional
  * del frontend sin tocar backend por ahora.
  *
- * Objetivo de este ajuste:
+ * Objetivos de este hook:
  * - mantener DEV_USER en desarrollo
- * - pero devolver un team más completo para que funcionen:
+ * - permitir DEMO MODE en Vercel
+ * - enriquecer user.team con branding guardado en localStorage
+ *   para que impacte en:
  *   - Mi Club
  *   - Dashboard
  *   - Players
  *   - PlayerProfile
  *
  * IMPORTANTE:
- * - esto NO agrega persistencia real
+ * - esto NO agrega persistencia real backend
  * - esto NO modifica endpoints
  * - esto NO reemplaza el futuro flujo con Mongo
- * - solo evita que el frontend quede “vacío” o inconsistente en dev
+ * - solo unifica la fuente de datos del frontend en demo
  *
- * PRODUCCIÓN:
- * - sigue usando /api/auth/me
+ * DEMO MODE:
+ * - activado con NEXT_PUBLIC_DEMO_MODE === 'true'
+ * - lee branding desde localStorage:
+ *   basket_metrics_demo_team_branding
  *
- * DESARROLLO:
- * - devuelve DEV_USER
- * - con contrato Team alineado al branding actual
+ * PRODUCCIÓN REAL:
+ * - si DEMO MODE no está activo:
+ *   sigue usando /api/auth/me
  */
+
+const DEMO_STORAGE_KEY = 'basket_metrics_demo_team_branding';
+
+type DemoTeamBranding = Pick<
+  ITeam,
+  | 'logoUrl'
+  | 'jerseyUrl'
+  | 'homeJerseyUrl'
+  | 'awayJerseyUrl'
+  | 'homePrimaryColor'
+  | 'homeSecondaryColor'
+  | 'awayPrimaryColor'
+  | 'awaySecondaryColor'
+>;
+
+function isDemoModeEnabled() {
+  return process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+}
+
+function readDemoBranding(): DemoTeamBranding | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.localStorage.getItem(DEMO_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as DemoTeamBranding;
+  } catch {
+    return null;
+  }
+}
+
+function mergeTeamBranding(baseTeam?: ITeam): ITeam | undefined {
+  if (!baseTeam && !isDemoModeEnabled()) return baseTeam;
+
+  const demoBranding = isDemoModeEnabled() ? readDemoBranding() : null;
+  if (!demoBranding) return baseTeam;
+
+  return {
+    _id: baseTeam?._id || 'dev-team',
+    name: baseTeam?.name || 'Dev Team',
+    logoUrl: demoBranding.logoUrl ?? baseTeam?.logoUrl,
+    jerseyUrl: demoBranding.jerseyUrl ?? baseTeam?.jerseyUrl,
+    homeJerseyUrl: demoBranding.homeJerseyUrl ?? baseTeam?.homeJerseyUrl,
+    awayJerseyUrl: demoBranding.awayJerseyUrl ?? baseTeam?.awayJerseyUrl,
+    homePrimaryColor:
+      demoBranding.homePrimaryColor ?? baseTeam?.homePrimaryColor,
+    homeSecondaryColor:
+      demoBranding.homeSecondaryColor ?? baseTeam?.homeSecondaryColor,
+    awayPrimaryColor:
+      demoBranding.awayPrimaryColor ?? baseTeam?.awayPrimaryColor,
+    awaySecondaryColor:
+      demoBranding.awaySecondaryColor ?? baseTeam?.awaySecondaryColor,
+  };
+}
 
 const DEV_USER: AuthUser = {
   _id: 'dev-pablo',
@@ -80,7 +138,21 @@ export function useAuth() {
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      setUser(DEV_USER);
+      setUser({
+        ...DEV_USER,
+        team: mergeTeamBranding(DEV_USER.team),
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (isDemoModeEnabled()) {
+      const demoUser: AuthUser = {
+        ...DEV_USER,
+        team: mergeTeamBranding(DEV_USER.team),
+      };
+
+      setUser(demoUser);
       setLoading(false);
       return;
     }
@@ -98,7 +170,7 @@ export function useAuth() {
             email: data.email,
             role: data.role,
             isActive: data.isActive,
-            team: data.team,
+            team: mergeTeamBranding(data.team),
             createdAt: data.createdAt,
             updatedAt: data.updatedAt,
           });
