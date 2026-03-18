@@ -1,5 +1,5 @@
+import Link from 'next/link';
 import PlayerManager from '@/components/players/PlayerManager';
-import CreatePlayerForm from '@/components/players/CreatePlayerForm';
 
 /**
  * ============================
@@ -10,26 +10,27 @@ import CreatePlayerForm from '@/components/players/CreatePlayerForm';
  * Objetivo actual:
  * - Esta página sigue siendo solo un contenedor visual del módulo.
  * - NO contiene lógica de negocio ni acceso a backend.
- * - La gestión visual se delega en:
- *   - <CreatePlayerForm />
- *   - <PlayerManager />
+ * - Toda la gestión real sigue delegada en <PlayerManager />.
+ *
+ * Estructura UX definida:
+ * - /panel/players         => gestión / listado
+ * - /panel/players/new     => alta manual
+ * - /panel/players/import  => importación
  *
  * Migración futura a Mongo:
  * - Si más adelante Players necesita SSR, filtros por URL o carga desde backend,
  *   esta página puede transformarse en:
  *   1) server component que consulte datos, o
- *   2) wrapper que pase props a manager / form.
+ *   2) wrapper que pase props al manager.
  *
  * Por ahora:
  * - Se mantiene limpia, estable y orientada 100% a layout/UI.
  * - No tocar la lógica funcional desde acá.
  *
  * Mejora UI 2026:
- * - hero más premium
- * - mejor jerarquía visual
- * - tarjetas laterales más limpias
- * - mejor transición entre encabezado y listado
- * - se integra el alta manual para poder probar el nuevo formulario
+ * - hero premium
+ * - acciones separadas por flujo
+ * - listado limpio, sin mezclar alta manual e importación
  */
 
 export default function PlayersPage() {
@@ -57,9 +58,9 @@ export default function PlayersPage() {
                 </h1>
 
                 <p className="mt-3 max-w-2xl text-sm leading-7 text-white/50 md:text-[15px]">
-                  Gestión del plantel y acceso rápido al roster para
-                  seguimiento, scouting y evolución individual dentro de una
-                  experiencia clara, moderna y enfocada en rendimiento.
+                  Administrá el plantel, consultá el roster y accedé a las
+                  acciones clave del módulo sin mezclar tareas distintas en una
+                  sola pantalla.
                 </p>
               </div>
 
@@ -78,7 +79,7 @@ export default function PlayersPage() {
                     Estado
                   </div>
                   <div className="mt-2 text-sm font-bold text-orange-300">
-                    UI Refresh
+                    UX Ordenada
                   </div>
                 </div>
 
@@ -96,11 +97,7 @@ export default function PlayersPage() {
         </section>
 
         <section className="mt-5">
-          <CreatePlayerForm />
-        </section>
-
-        <section className="mt-6">
-          <div className="mb-4 flex items-end justify-between gap-4">
+          <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-300/70">
                 Plantel
@@ -108,15 +105,26 @@ export default function PlayersPage() {
               <h2 className="mt-1 text-2xl font-black tracking-tight text-white">
                 Jugadores cargados
               </h2>
+              <p className="mt-2 text-sm text-white/40">
+                Gestión del roster con acceso separado a alta manual e
+                importación.
+              </p>
             </div>
 
-            <div className="hidden text-right md:block">
-              <p className="text-xs uppercase tracking-[0.18em] text-white/25">
-                Vista actual
-              </p>
-              <p className="mt-1 text-sm text-white/45">
-                Cards de roster con foco visual en rendimiento
-              </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/panel/players/new"
+                className="inline-flex items-center justify-center rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-orange-400 hover:shadow-[0_16px_35px_rgba(249,115,22,0.28)]"
+              >
+                + Nuevo jugador
+              </Link>
+
+              <Link
+                href="/panel/players/import"
+                className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-orange-400/30 hover:bg-white/[0.07]"
+              >
+                Importar jugadores
+              </Link>
             </div>
           </div>
 
