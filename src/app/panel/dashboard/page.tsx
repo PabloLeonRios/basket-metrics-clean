@@ -15,7 +15,7 @@
  * 1) intenta cargar /api/players cuando NO estamos en demo mode
  * 2) en demo mode lee jugadores desde localStorage
  * 3) arma métricas simples desde roster
- * 4) arma topPlayers básico desde roster
+ * 4) arma topPlayers SOLO con jugadores propios
  * 5) si algo falla, cae a valores demo para no romper la pantalla
  *
  * Importante:
@@ -37,6 +37,10 @@
  * - se elimina TeamWithBranding local
  * - se usa directamente ITeam
  * - se mantiene compatibilidad con jerseyUrl legacy
+ *
+ * Regla funcional dashboard:
+ * - TOP RENDIMIENTO = solo jugadores propios
+ * - los rivales NO deben aparecer en ese bloque principal
  *
  * Clave localStorage demo:
  * - basket_metrics_demo_players
@@ -95,7 +99,7 @@ const demoTopPlayers: DashboardPlayer[] = [
     name: 'Martín Rodríguez Silva',
     number: 11,
     efficiency: 8,
-    isRival: true,
+    isRival: false,
   },
 ];
 
@@ -532,6 +536,11 @@ export default function DashboardPage() {
     };
   }, []);
 
+  const ownPlayers = useMemo(
+    () => players.filter((p) => !p.isRival),
+    [players],
+  );
+
   const panelStats = useMemo<PanelStats>(() => {
     if (!playersReady) {
       return demoPanelStats;
@@ -541,26 +550,26 @@ export default function DashboardPage() {
       return demoPanelStats;
     }
 
-    const ownPlayers = players.filter((p) => !p.isRival);
-
     return {
       players: players.length,
       sessions: demoPanelStats.sessions,
       activePlayers: ownPlayers.length,
     };
-  }, [players, playersReady, usingFallback]);
+  }, [players, ownPlayers, playersReady, usingFallback]);
 
   const topPlayers = useMemo<DashboardPlayer[]>(() => {
     if (!playersReady) {
       return demoTopPlayers;
     }
 
-    const list = [...players]
+    const source = ownPlayers.length ? ownPlayers : demoTopPlayers;
+
+    const list = [...source]
       .sort((a, b) => b.efficiency - a.efficiency)
       .slice(0, 3);
 
     return list.length ? list : demoTopPlayers;
-  }, [players, playersReady]);
+  }, [ownPlayers, playersReady]);
 
   return (
     <div className="space-y-6">
