@@ -28,23 +28,29 @@
  *
  * GET /api/dashboard/top-players
  * [
- *   { id: string, name: string, number: number, efficiency: number }
+ *   { id: string, name: string, number: number, efficiency: number, isRival?: boolean }
  * ]
  *
  * Regla actual de camiseta:
- * - si existe team.jerseyUrl => usar esa imagen
- * - si no existe => fallback /america.jpg
+ * - equipo propio:
+ *   1) homeJerseyUrl
+ *   2) home palette
+ *   3) fallback demo
+ * - rival:
+ *   1) awayJerseyUrl
+ *   2) away palette
+ *   3) fallback demo
  *
- * Evolución recomendada:
- * - leer desde Mi Club:
- *   - homeJerseyUrl
- *   - awayJerseyUrl
- * - si no hay imagen:
- *   - usar paleta local/rival
- *   - renderizar camiseta SVG
+ * Campos esperados en Team:
+ * - jerseyUrl?: string              // legacy
+ * - homeJerseyUrl?: string
+ * - awayJerseyUrl?: string
+ * - homePrimaryColor?: string
+ * - homeSecondaryColor?: string
+ * - awayPrimaryColor?: string
+ * - awaySecondaryColor?: string
  *
  * Importante:
- * - no acoplar la UI a los mocks
  * - mantener esta página preparada para migrar a fetch real
  */
 
@@ -58,8 +64,14 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-type TeamWithJersey = {
+type TeamWithBranding = {
   jerseyUrl?: string;
+  homeJerseyUrl?: string;
+  awayJerseyUrl?: string;
+  homePrimaryColor?: string;
+  homeSecondaryColor?: string;
+  awayPrimaryColor?: string;
+  awaySecondaryColor?: string;
 };
 
 function shellClassName() {
@@ -118,24 +130,25 @@ function KpiCard({
   );
 }
 
-function DashboardJersey({
+function JerseySvg({
   number,
-  primary = '#ff6a00',
-  secondary = '#ff8b2b',
-  accent = '#2a1306',
+  primary,
+  secondary,
+  accent = '#161a22',
 }: {
-  number: number;
-  primary?: string;
-  secondary?: string;
+  number?: number;
+  primary: string;
+  secondary: string;
   accent?: string;
 }) {
-  const safeId = `jersey-${number}-${primary.replace('#', '')}`;
+  const displayNumber = typeof number === 'number' ? number : '?';
+  const safeId = `jersey-${displayNumber}-${primary.replace('#', '')}-${secondary.replace('#', '')}`;
 
   return (
     <div className="flex h-full w-full items-center justify-center">
       <svg
         viewBox="0 0 180 210"
-        className="h-[82px] w-[64px] drop-shadow-[0_0_18px_rgba(255,106,0,0.22)] transition-transform duration-300 group-hover:scale-[1.04]"
+        className="h-[82px] w-[64px] drop-shadow-[0_0_18px_rgba(255,106,0,0.16)] transition-transform duration-300 group-hover:scale-[1.04]"
         aria-hidden="true"
       >
         <defs>
@@ -145,8 +158,8 @@ function DashboardJersey({
           </linearGradient>
 
           <linearGradient id={`${safeId}-side`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#ffd8b6" stopOpacity="0.55" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.02" />
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.03" />
           </linearGradient>
         </defs>
 
@@ -169,7 +182,7 @@ function DashboardJersey({
             Z
           "
           fill={`url(#${safeId}-grad)`}
-          stroke="#120c08"
+          stroke="#0f1218"
           strokeWidth="5"
           strokeLinejoin="round"
         />
@@ -203,21 +216,13 @@ function DashboardJersey({
         <path
           d="M49 66 L64 78 L64 192 L57 192 Q49 192 49 184 Z"
           fill={`url(#${safeId}-side)`}
-          opacity="0.55"
+          opacity="0.7"
         />
 
         <path
           d="M131 66 L116 78 L116 192 L123 192 Q131 192 131 184 Z"
           fill={`url(#${safeId}-side)`}
-          opacity="0.3"
-        />
-
-        <path
-          d="M64 78 Q90 92 116 78"
-          fill="none"
-          stroke="#ffcf9f"
-          strokeOpacity="0.25"
-          strokeWidth="3"
+          opacity="0.35"
         />
 
         <text
@@ -229,21 +234,13 @@ function DashboardJersey({
           fill="#ffffff"
           style={{
             paintOrder: 'stroke',
-            stroke: '#7a3300',
+            stroke: '#111827',
             strokeWidth: 3,
             letterSpacing: '-2px',
           }}
         >
-          {number}
+          {displayNumber}
         </text>
-
-        <path
-          d="M56 170 H124"
-          stroke="#ffd4aa"
-          strokeOpacity="0.35"
-          strokeWidth="3"
-          strokeLinecap="round"
-        />
       </svg>
     </div>
   );
@@ -257,7 +254,7 @@ function ClubJerseyImage({ jerseyUrl }: { jerseyUrl: string }) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
-        alt="Camiseta del club"
+        alt="Camiseta"
         className="h-[82px] w-[64px] object-contain transition-transform duration-300 group-hover:scale-[1.04]"
         onError={() => setSrc('/america.jpg')}
       />
@@ -265,20 +262,52 @@ function ClubJerseyImage({ jerseyUrl }: { jerseyUrl: string }) {
   );
 }
 
+function TeamJersey({
+  number,
+  imageUrl,
+  primary,
+  secondary,
+}: {
+  number?: number;
+  imageUrl?: string;
+  primary: string;
+  secondary: string;
+}) {
+  if (imageUrl) {
+    return <ClubJerseyImage jerseyUrl={imageUrl} />;
+  }
+
+  return <JerseySvg number={number} primary={primary} secondary={secondary} />;
+}
+
 function TopPlayerCard({
   name,
   number,
   efficiency,
   href,
-  clubJerseyUrl,
+  isRival = false,
+  homeJerseyUrl,
+  awayJerseyUrl,
+  homePrimaryColor,
+  homeSecondaryColor,
+  awayPrimaryColor,
+  awaySecondaryColor,
 }: {
   name: string;
   number: number;
   efficiency: number;
   href: string;
-  clubJerseyUrl?: string;
+  isRival?: boolean;
+  homeJerseyUrl?: string;
+  awayJerseyUrl?: string;
+  homePrimaryColor: string;
+  homeSecondaryColor: string;
+  awayPrimaryColor: string;
+  awaySecondaryColor: string;
 }) {
-  const useRealClubJersey = !!clubJerseyUrl;
+  const imageUrl = isRival ? awayJerseyUrl : homeJerseyUrl;
+  const primary = isRival ? awayPrimaryColor : homePrimaryColor;
+  const secondary = isRival ? awaySecondaryColor : homeSecondaryColor;
 
   return (
     <Link
@@ -299,11 +328,12 @@ function TopPlayerCard({
         <div className="relative flex min-h-[148px] flex-col gap-4">
           <div className="flex items-start gap-4">
             <div className="flex h-[102px] w-[102px] shrink-0 items-center justify-center rounded-[24px] border border-white/8 bg-white/[0.04] shadow-inner shadow-black/20">
-              {useRealClubJersey ? (
-                <ClubJerseyImage jerseyUrl={clubJerseyUrl!} />
-              ) : (
-                <DashboardJersey number={number} />
-              )}
+              <TeamJersey
+                number={number}
+                imageUrl={imageUrl}
+                primary={primary}
+                secondary={secondary}
+              />
             </div>
 
             <div className="min-w-0 flex-1">
@@ -343,8 +373,14 @@ function TopPlayerCard({
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const team = (user?.team as TeamWithJersey | undefined) ?? undefined;
-  const clubJerseyUrl = team?.jerseyUrl || '/america.jpg';
+  const team = (user?.team as TeamWithBranding | undefined) ?? undefined;
+
+  const homeJerseyUrl = team?.homeJerseyUrl || team?.jerseyUrl || '';
+  const awayJerseyUrl = team?.awayJerseyUrl || '';
+  const homePrimaryColor = team?.homePrimaryColor || '#15803d';
+  const homeSecondaryColor = team?.homeSecondaryColor || '#22c55e';
+  const awayPrimaryColor = team?.awayPrimaryColor || '#1f2937';
+  const awaySecondaryColor = team?.awaySecondaryColor || '#6b7280';
 
   const panelStats = {
     players: 12,
@@ -353,9 +389,9 @@ export default function DashboardPage() {
   };
 
   const topPlayers = [
-    { id: '1', name: 'Juan Pérez González', number: 23, efficiency: 12 },
-    { id: '2', name: 'Lucas Fernández Díaz', number: 7, efficiency: 9 },
-    { id: '3', name: 'Martín Rodríguez Silva', number: 11, efficiency: 8 },
+    { id: '1', name: 'Juan Pérez González', number: 23, efficiency: 12, isRival: false },
+    { id: '2', name: 'Lucas Fernández Díaz', number: 7, efficiency: 9, isRival: false },
+    { id: '3', name: 'Martín Rodríguez Silva', number: 11, efficiency: 8, isRival: true },
   ];
 
   return (
@@ -450,7 +486,13 @@ export default function DashboardPage() {
               number={player.number}
               efficiency={player.efficiency}
               href={`/panel/players/${player.id}`}
-              clubJerseyUrl={clubJerseyUrl}
+              isRival={player.isRival}
+              homeJerseyUrl={homeJerseyUrl}
+              awayJerseyUrl={awayJerseyUrl}
+              homePrimaryColor={homePrimaryColor}
+              homeSecondaryColor={homeSecondaryColor}
+              awayPrimaryColor={awayPrimaryColor}
+              awaySecondaryColor={awaySecondaryColor}
             />
           ))}
         </div>
