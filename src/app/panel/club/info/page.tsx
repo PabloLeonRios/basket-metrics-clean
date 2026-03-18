@@ -52,7 +52,57 @@ import { toast } from 'react-toastify';
  * - se usa directamente ITeam
  * - no se toca backend
  * - no se rompe compatibilidad legacy
+ *
+ * DEMO MODE VERCEL:
+ * - si NEXT_PUBLIC_DEMO_MODE === 'true'
+ *   NO hace PUT real al backend
+ * - guarda branding local en localStorage
+ * - permite a Pablo seguir probando el flujo visual online
+ *   sin depender de token/auth
+ *
+ * Clave localStorage:
+ * - basket_metrics_demo_team_branding
  */
+
+const DEMO_STORAGE_KEY = 'basket_metrics_demo_team_branding';
+
+type DemoTeamBranding = Pick<
+  ITeam,
+  | 'logoUrl'
+  | 'jerseyUrl'
+  | 'homeJerseyUrl'
+  | 'awayJerseyUrl'
+  | 'homePrimaryColor'
+  | 'homeSecondaryColor'
+  | 'awayPrimaryColor'
+  | 'awaySecondaryColor'
+>;
+
+function isDemoModeEnabled() {
+  return process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+}
+
+function readDemoBranding(): DemoTeamBranding | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.localStorage.getItem(DEMO_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as DemoTeamBranding;
+  } catch {
+    return null;
+  }
+}
+
+function saveDemoBranding(data: DemoTeamBranding) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // no-op
+  }
+}
 
 function JerseyPreviewSvg({
   primary,
@@ -371,36 +421,38 @@ export default function ClubInfoPage() {
 
   useEffect(() => {
     const team: ITeam | undefined = user?.team;
+    const demoBranding = isDemoModeEnabled() ? readDemoBranding() : null;
 
-    if (team?.logoUrl) {
-      setLogoUrl(team.logoUrl);
+    const source: DemoTeamBranding = {
+      logoUrl: demoBranding?.logoUrl ?? team?.logoUrl ?? '',
+      jerseyUrl: demoBranding?.jerseyUrl ?? team?.jerseyUrl ?? '',
+      homeJerseyUrl: demoBranding?.homeJerseyUrl ?? team?.homeJerseyUrl ?? '',
+      awayJerseyUrl: demoBranding?.awayJerseyUrl ?? team?.awayJerseyUrl ?? '',
+      homePrimaryColor:
+        demoBranding?.homePrimaryColor ?? team?.homePrimaryColor ?? '#15803d',
+      homeSecondaryColor:
+        demoBranding?.homeSecondaryColor ?? team?.homeSecondaryColor ?? '#22c55e',
+      awayPrimaryColor:
+        demoBranding?.awayPrimaryColor ?? team?.awayPrimaryColor ?? '#1f2937',
+      awaySecondaryColor:
+        demoBranding?.awaySecondaryColor ?? team?.awaySecondaryColor ?? '#6b7280',
+    };
+
+    setLogoUrl(source.logoUrl || '');
+
+    if (source.homeJerseyUrl) {
+      setHomeJerseyUrl(source.homeJerseyUrl);
+    } else if (source.jerseyUrl) {
+      setHomeJerseyUrl(source.jerseyUrl);
+    } else {
+      setHomeJerseyUrl('');
     }
 
-    if (team?.homeJerseyUrl) {
-      setHomeJerseyUrl(team.homeJerseyUrl);
-    } else if (team?.jerseyUrl) {
-      setHomeJerseyUrl(team.jerseyUrl);
-    }
-
-    if (team?.awayJerseyUrl) {
-      setAwayJerseyUrl(team.awayJerseyUrl);
-    }
-
-    if (team?.homePrimaryColor) {
-      setHomePrimaryColor(team.homePrimaryColor);
-    }
-
-    if (team?.homeSecondaryColor) {
-      setHomeSecondaryColor(team.homeSecondaryColor);
-    }
-
-    if (team?.awayPrimaryColor) {
-      setAwayPrimaryColor(team.awayPrimaryColor);
-    }
-
-    if (team?.awaySecondaryColor) {
-      setAwaySecondaryColor(team.awaySecondaryColor);
-    }
+    setAwayJerseyUrl(source.awayJerseyUrl || '');
+    setHomePrimaryColor(source.homePrimaryColor || '#15803d');
+    setHomeSecondaryColor(source.homeSecondaryColor || '#22c55e');
+    setAwayPrimaryColor(source.awayPrimaryColor || '#1f2937');
+    setAwaySecondaryColor(source.awaySecondaryColor || '#6b7280');
   }, [user]);
 
   const resizeToDataUrl = (
@@ -479,17 +531,25 @@ export default function ClubInfoPage() {
 
     setLoading(true);
 
+    const payload: DemoTeamBranding = {
+      logoUrl,
+      jerseyUrl: homeJerseyUrl, // legacy para compatibilidad
+      homeJerseyUrl,
+      awayJerseyUrl,
+      homePrimaryColor,
+      homeSecondaryColor,
+      awayPrimaryColor,
+      awaySecondaryColor,
+    };
+
     try {
-      const payload = {
-        logoUrl,
-        jerseyUrl: homeJerseyUrl, // legacy para compatibilidad
-        homeJerseyUrl,
-        awayJerseyUrl,
-        homePrimaryColor,
-        homeSecondaryColor,
-        awayPrimaryColor,
-        awaySecondaryColor,
-      };
+      if (isDemoModeEnabled()) {
+        saveDemoBranding(payload);
+        toast.success(
+          'Cambios guardados en modo demo. Recargá para verificar persistencia local.',
+        );
+        return;
+      }
 
       const response = await fetch(`/api/teams/${user.team._id}`, {
         method: 'PUT',
@@ -498,9 +558,9 @@ export default function ClubInfoPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => null);
         throw new Error(
-          errorData.message || 'Error al actualizar los datos del club',
+          errorData?.message || 'Error al actualizar los datos del club',
         );
       }
 
@@ -530,6 +590,13 @@ export default function ClubInfoPage() {
               imagen, el sistema podrá usar la paleta de colores para renderizar
               una camiseta visual en dashboard, players y profile.
             </p>
+
+            {isDemoModeEnabled() && (
+              <div className="mt-4 rounded-2xl border border-orange-400/20 bg-orange-500/10 px-4 py-3 text-sm text-orange-200">
+                Modo demo activo en Vercel: los cambios se guardan localmente en
+                tu navegador y no se envían al backend.
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
