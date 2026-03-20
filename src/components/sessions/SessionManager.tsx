@@ -56,10 +56,10 @@ type DemoSession = ISession & {
   sessionType: string;
   type?: string;
   teams?: Array<{ name: string; players?: string[] }>;
-  finishedAt?: string | null;
-  reopenedAt?: string | null;
-  reopenedBy?: string | null;
-  demoStatsCalculatedAt?: string | null;
+  finishedAt?: string;
+  reopenedAt?: string;
+  reopenedBy?: string;
+  demoStatsCalculatedAt?: string;
 };
 
 function safeJsonParse<T>(value: string | null, fallback: T): T {
@@ -236,12 +236,12 @@ export default function SessionManager() {
     if (!confirm('¿Desea reabrir este partido?')) return;
 
     try {
-      const nextSessions = allSessions.map((session) => {
+      const nextSessions: DemoSession[] = allSessions.map((session) => {
         if (getSessionId(session) !== sessionId) return session;
 
         return {
           ...session,
-          finishedAt: null,
+          finishedAt: undefined,
           reopenedAt: new Date().toISOString(),
           reopenedBy: user?.name || user?.email || 'Usuario demo',
         };
@@ -266,7 +266,7 @@ export default function SessionManager() {
        * no existe engine real.
        * Marcamos timestamp de cálculo para habilitar "Resumen".
        */
-      const nextSessions = allSessions.map((session) => {
+      const nextSessions: DemoSession[] = allSessions.map((session) => {
         if (getSessionId(session) !== sessionId) return session;
 
         return {
