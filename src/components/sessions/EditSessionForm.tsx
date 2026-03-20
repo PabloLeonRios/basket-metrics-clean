@@ -37,7 +37,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { IPlayer, ISession, sessionTypes } from '@/types/definitions';
+import { IPlayer, sessionTypes } from '@/types/definitions';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'react-toastify';
 
@@ -45,7 +45,13 @@ interface EditSessionFormProps {
   sessionId: string;
 }
 
-type DemoSession = ISession & {
+type DemoSessionTeam = {
+  _id?: string;
+  name: string;
+  players?: Array<string | { _id?: string }>;
+};
+
+type DemoSession = {
   id?: string;
   _id: string;
   coach?: string;
@@ -55,14 +61,15 @@ type DemoSession = ISession & {
   date: string;
   sessionType: string;
   type?: string;
-  teams?: Array<{
-    name: string;
-    players?: Array<string | { _id?: string }>;
-  }>;
+  teams?: DemoSessionTeam[];
+  teamAName?: string;
+  teamBName?: string;
+  playerIds?: string[];
   finishedAt?: string;
   reopenedAt?: string;
   reopenedBy?: string;
   demoStatsCalculatedAt?: string;
+  updatedAt?: number;
 };
 
 const PLAYERS_STORAGE_KEY = 'basket_metrics_demo_players';
@@ -90,11 +97,16 @@ function normalizeTeamPlayerIds(
   return players
     .map((player) => {
       if (typeof player === 'string') return player;
-      if (player && typeof player === 'object' && typeof player._id === 'string')
+      if (player && typeof player === 'object' && typeof player._id === 'string') {
         return player._id;
+      }
       return '';
     })
     .filter(Boolean);
+}
+
+function generateTeamId(prefix: 'A' | 'B') {
+  return `team_${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export default function EditSessionForm({ sessionId }: EditSessionFormProps) {
@@ -295,10 +307,20 @@ export default function EditSessionForm({ sessionId }: EditSessionFormProps) {
       }
     }
 
-    const teams = [{ name: teamAName.trim(), players: Array.from(teamAPlayers) }];
+    const teams: DemoSessionTeam[] = [
+      {
+        _id: session.teams?.[0]?._id || generateTeamId('A'),
+        name: teamAName.trim(),
+        players: Array.from(teamAPlayers),
+      },
+    ];
 
     if (isMatchSession) {
-      teams.push({ name: teamBName.trim(), players: Array.from(teamBPlayers) });
+      teams.push({
+        _id: session.teams?.[1]?._id || generateTeamId('B'),
+        name: teamBName.trim(),
+        players: Array.from(teamBPlayers),
+      });
     }
 
     try {
@@ -326,7 +348,7 @@ export default function EditSessionForm({ sessionId }: EditSessionFormProps) {
             ]),
           ),
           updatedAt: Date.now(),
-        } as DemoSession;
+        };
       });
 
       localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(nextSessions));
