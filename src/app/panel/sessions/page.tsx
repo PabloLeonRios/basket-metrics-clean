@@ -1,4 +1,26 @@
 // src/app/panel/sessions/page.tsx
+
+/**
+ * ==========================================================
+ * NOTAS PARA PABLITO (Mongo / backend real futuro)
+ * ==========================================================
+ * Esta página hoy funciona como contenedor visual del módulo Sesiones.
+ *
+ * REGLAS ACTUALES:
+ * - no tocar backend
+ * - no meter fetch acá
+ * - SessionManager resuelve la lógica operativa
+ * - en DEMO MODE la fuente real debe ser localStorage
+ *
+ * OBJETIVO:
+ * - mantener esta página simple, estable y desacoplada
+ * - que sirva igual cuando después se migre a backend real
+ *
+ * MIGRACIÓN FUTURA:
+ * - si Sessions pasa a SSR/CSR mixto, esta página puede quedarse igual
+ * - la lógica fuerte debe seguir en componentes o hooks
+ */
+
 import SessionManager from '@/components/sessions/SessionManager';
 
 export default function SessionsPage() {
