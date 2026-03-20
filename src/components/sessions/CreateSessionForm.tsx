@@ -1,5 +1,49 @@
 'use client';
 
+/**
+ * ==========================================================
+ * NOTAS PARA PABLITO (Mongo / backend real futuro)
+ * ==========================================================
+ * ESTE FORMULARIO FUE ADAPTADO A DEMO MODE.
+ *
+ * REGLAS ACTUALES:
+ * - NO usa backend
+ * - NO llama /api/players
+ * - NO llama /api/sessions
+ * - Lee jugadores desde localStorage:
+ *   key: "basket_metrics_demo_players"
+ * - Guarda sesiones en localStorage:
+ *   key: "basket_metrics_demo_sessions"
+ *
+ * OBJETIVO:
+ * - permitir crear sesiones funcionales en Vercel demo
+ * - mantener estructura coherente para que:
+ *   - listado de sesiones
+ *   - edición
+ *   - clock
+ *   - tracker
+ *   puedan leer la misma base
+ *
+ * ESTRUCTURA DEMO DE SESIÓN:
+ * - id
+ * - name
+ * - title
+ * - coach
+ * - sessionType
+ * - type
+ * - teams
+ * - teamAName
+ * - teamBName
+ * - playerIds
+ * - date
+ * - createdAt
+ * - updatedAt
+ *
+ * MIGRACIÓN FUTURA:
+ * - reemplazar lecturas de localStorage por endpoints reales
+ * - conservar en lo posible la forma del objeto para evitar refactor fuerte
+ */
+
 import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,15 +54,53 @@ import Dropdown from '@/components/ui/Dropdown';
 import Checkbox from '@/components/ui/Checkbox';
 import { toast } from 'react-toastify';
 
+const PLAYERS_STORAGE_KEY = 'basket_metrics_demo_players';
+const SESSIONS_STORAGE_KEY = 'basket_metrics_demo_sessions';
+
+type DemoSessionTeam = {
+  name: string;
+  players: string[];
+};
+
+type DemoSession = {
+  id: string;
+  _id: string;
+  name: string;
+  title: string;
+  coach: string;
+  coachId: string;
+  sessionType: string;
+  type: string;
+  teams: DemoSessionTeam[];
+  teamAName: string;
+  teamBName?: string;
+  playerIds: string[];
+  date: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+function safeJsonParse<T>(value: string | null, fallback: T): T {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch (error) {
+    console.error('Error parseando JSON de localStorage:', error);
+    return fallback;
+  }
+}
+
+function generateSessionId() {
+  return `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
 export default function CreateSessionForm() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
-  // Player fetching state
   const [allPlayers, setAllPlayers] = useState<IPlayer[]>([]);
   const [playersLoading, setPlayersLoading] = useState(true);
 
-  // Form state
   const [sessionName, setSessionName] = useState('');
   const [sessionType, setSessionType] = useState<string>(sessionTypes[0]);
   const [teamAName, setTeamAName] = useState('Equipo A');
@@ -27,38 +109,44 @@ export default function CreateSessionForm() {
   const [teamBPlayers, setTeamBPlayers] = useState(new Set<string>());
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch players available to the user/admin
   useEffect(() => {
-    async function fetchPlayers() {
-      if (!user) return;
-      try {
-        setPlayersLoading(true);
-        const isAdmin = user.role === 'admin';
-        let playersUrl = '/api/players?showRivals=true';
-        if (!isAdmin) {
-          playersUrl += `&coachId=${user._id}`;
-        }
+    if (authLoading) return;
 
-        const playersRes = await fetch(playersUrl);
-        if (!playersRes.ok)
-          throw new Error('No se pudieron cargar los jugadores.');
+    try {
+      setPlayersLoading(true);
 
-        const { data: playersData } = await playersRes.json();
-        setAllPlayers(playersData);
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : 'Error al cargar jugadores.',
-        );
-      } finally {
-        setPlayersLoading(false);
-      }
-    }
-    if (!authLoading) {
-      fetchPlayers();
+      const storedPlayers = safeJsonParse<IPlayer[]>(
+        localStorage.getItem(PLAYERS_STORAGE_KEY),
+        [],
+      );
+
+      /**
+       * DEMO RULE:
+       * - admin ve todo
+       * - coach no admin puede ver filtrado por coachId si existe
+       * - si el player no trae coachId, no lo filtramos agresivamente para no romper demo
+       */
+      const isAdmin = user?.role === 'admin';
+
+      const filteredPlayers = storedPlayers.filter((player) => {
+        if (isAdmin) return true;
+        if (!user?._id) return true;
+
+        const coachId = (player as IPlayer & { coachId?: string }).coachId;
+        if (!coachId) return true;
+
+        return coachId === user._id;
+      });
+
+      setAllPlayers(filteredPlayers);
+    } catch (error) {
+      toast.error('Error al cargar jugadores desde demo mode.');
+      console.error(error);
+    } finally {
+      setPlayersLoading(false);
     }
   }, [user, authLoading]);
 
-  // Handle "Partido de Temporada" auto-population
   useEffect(() => {
     if (
       sessionType === 'Partido de Temporada' &&
@@ -79,16 +167,15 @@ export default function CreateSessionForm() {
       });
 
       setTeamAPlayers(teamAIds);
-
-      // We clear Team B so the user can select generic players
       setTeamBPlayers(new Set<string>());
       setTeamBName('Equipo B');
     }
   }, [sessionType, playersLoading, user, allPlayers]);
 
+  const isMatchSession =
+    sessionType === 'Partido' || sessionType === 'Partido de Temporada';
+
   const handlePlayerToggle = (team: 'A' | 'B', playerId: string) => {
-    const isPartido =
-      sessionType === 'Partido' || sessionType === 'Partido de Temporada';
     if (team === 'A') {
       setTeamAPlayers((prev) => {
         const newSet = new Set(prev);
@@ -96,19 +183,22 @@ export default function CreateSessionForm() {
         else newSet.add(playerId);
         return newSet;
       });
-      if (isPartido)
+
+      if (isMatchSession) {
         setTeamBPlayers((prev) => {
           const newSet = new Set(prev);
           newSet.delete(playerId);
           return newSet;
         });
-    } else if (isPartido && team === 'B') {
+      }
+    } else if (isMatchSession && team === 'B') {
       setTeamBPlayers((prev) => {
         const newSet = new Set(prev);
         if (newSet.has(playerId)) newSet.delete(playerId);
         else newSet.add(playerId);
         return newSet;
       });
+
       setTeamAPlayers((prev) => {
         const newSet = new Set(prev);
         newSet.delete(playerId);
@@ -118,9 +208,6 @@ export default function CreateSessionForm() {
   };
 
   const handleSelectAll = (team: 'A' | 'B') => {
-    const isPartido =
-      sessionType === 'Partido' || sessionType === 'Partido de Temporada';
-
     if (team === 'A') {
       const filteredPlayers = allPlayers.filter(
         (player) =>
@@ -128,24 +215,28 @@ export default function CreateSessionForm() {
           !user?.team?.name ||
           player.team === user.team.name,
       );
+
       const allIds = new Set(filteredPlayers.map((p) => p._id));
       setTeamAPlayers(allIds);
-      if (isPartido) {
+
+      if (isMatchSession) {
         setTeamBPlayers((prev) => {
           const newSet = new Set(prev);
           filteredPlayers.forEach((p) => newSet.delete(p._id));
           return newSet;
         });
       }
-    } else if (isPartido && team === 'B') {
+    } else if (isMatchSession && team === 'B') {
       const filteredPlayers = allPlayers.filter(
         (player) =>
           sessionType !== 'Partido de Temporada' ||
           !user?.team?.name ||
           player.team !== user.team.name,
       );
+
       const allIds = new Set(filteredPlayers.map((p) => p._id));
       setTeamBPlayers(allIds);
+
       setTeamAPlayers((prev) => {
         const newSet = new Set(prev);
         filteredPlayers.forEach((p) => newSet.delete(p._id));
@@ -164,12 +255,30 @@ export default function CreateSessionForm() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user) {
+      toast.error('No se encontró el usuario actual.');
+      return;
+    }
 
-    if (sessionType === 'Partido' || sessionType === 'Partido de Temporada') {
+    if (!sessionName.trim()) {
+      toast.warning('Ingresá un nombre para la sesión.');
+      return;
+    }
+
+    if (!teamAName.trim()) {
+      toast.warning('Ingresá el nombre del equipo o grupo principal.');
+      return;
+    }
+
+    if (isMatchSession && !teamBName.trim()) {
+      toast.warning('Ingresá el nombre del segundo equipo.');
+      return;
+    }
+
+    if (isMatchSession) {
       if (teamAPlayers.size > 5 || teamBPlayers.size > 5) {
         toast.warning(
-          'Se ha superado la cantidad máxima de 5 jugadores en cancha para el quinteto inicial. Por favor, realiza ajustes.',
+          'Se superó la cantidad máxima de 5 jugadores en cancha para el quinteto inicial.',
         );
         return;
       }
@@ -177,29 +286,67 @@ export default function CreateSessionForm() {
 
     setIsSubmitting(true);
 
-    const teams = [{ name: teamAName, players: Array.from(teamAPlayers) }];
-    if (sessionType === 'Partido' || sessionType === 'Partido de Temporada') {
-      teams.push({ name: teamBName, players: Array.from(teamBPlayers) });
-    }
-
     try {
-      const response = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: sessionName,
-          coach: user._id,
-          sessionType,
-          teams,
-          date: new Date().toISOString(),
-        }),
-      });
-      if (!response.ok) throw new Error('No se pudo crear la sesión');
+      const nowIso = new Date().toISOString();
+      const nowTs = Date.now();
+      const sessionId = generateSessionId();
 
-      const { data: newSession } = await response.json();
-      toast.success('Sesión creada. Redirigiendo al tracker...');
+      const teams: DemoSessionTeam[] = [
+        { name: teamAName.trim(), players: Array.from(teamAPlayers) },
+      ];
+
+      if (isMatchSession) {
+        teams.push({
+          name: teamBName.trim(),
+          players: Array.from(teamBPlayers),
+        });
+      }
+
+      const playerIds = Array.from(
+        new Set([...Array.from(teamAPlayers), ...Array.from(teamBPlayers)]),
+      );
+
+      const newSession: DemoSession = {
+        id: sessionId,
+        _id: sessionId,
+        name: sessionName.trim(),
+        title: sessionName.trim(),
+        coach: user._id,
+        coachId: user._id,
+        sessionType,
+        type: sessionType,
+        teams,
+        teamAName: teamAName.trim(),
+        teamBName: isMatchSession ? teamBName.trim() : undefined,
+        playerIds,
+        date: nowIso,
+        createdAt: nowTs,
+        updatedAt: nowTs,
+      };
+
+      const existingSessions = safeJsonParse<DemoSession[]>(
+        localStorage.getItem(SESSIONS_STORAGE_KEY),
+        [],
+      );
+
+      const nextSessions = [newSession, ...existingSessions];
+
+      localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(nextSessions));
+
+      toast.success('Sesión creada en demo mode.');
+
+      /**
+       * DEMO FLOW:
+       * antes iba al tracker con _id devuelto por API.
+       * Acá mantenemos una navegación coherente con la misma convención.
+       *
+       * Si existe /panel/tracker/[sessionId], esto queda alineado.
+       * Si luego el flujo real cambia, Pablito puede ajustar este push
+       * sin tocar la estructura de guardado.
+       */
       router.push(`/panel/tracker/${newSession._id}`);
     } catch (err) {
+      console.error(err);
       toast.error(
         err instanceof Error ? err.message : 'Error al crear la sesión.',
       );
@@ -213,8 +360,8 @@ export default function CreateSessionForm() {
   return (
     <div className="bg-white dark:bg-gray-900 p-4 sm:p-6 rounded-xl shadow-md">
       <h2 className="text-xl font-bold mb-4">Crear Nueva Sesión</h2>
+
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* ... Form fields ... */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="sessionName" className={labelStyles}>
@@ -230,6 +377,7 @@ export default function CreateSessionForm() {
               inputSize="lg"
             />
           </div>
+
           <div>
             <label htmlFor="sessionType" className={labelStyles}>
               Tipo de Sesión
@@ -246,20 +394,20 @@ export default function CreateSessionForm() {
             />
           </div>
         </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
           <div className="space-y-3">
             <label className={labelStyles}>
-              {sessionType === 'Partido' ||
-              sessionType === 'Partido de Temporada'
-                ? 'Nombre Equipo A'
-                : 'Nombre del Grupo'}
+              {isMatchSession ? 'Nombre Equipo A' : 'Nombre del Grupo'}
             </label>
+
             <Input
               type="text"
               value={teamAName}
               onChange={(e) => setTeamAName(e.target.value)}
               inputSize="lg"
             />
+
             <div className="flex justify-between items-center">
               <p className={labelStyles}>Seleccionar Jugadores:</p>
               <div className="flex space-x-2 text-xs">
@@ -279,9 +427,14 @@ export default function CreateSessionForm() {
                 </button>
               </div>
             </div>
+
             <div className="max-h-48 overflow-y-auto space-y-2 rounded-lg p-3 bg-gray-50 dark:bg-gray-800">
               {playersLoading ? (
                 <p>Cargando jugadores...</p>
+              ) : allPlayers.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No hay jugadores cargados en demo mode.
+                </p>
               ) : (
                 allPlayers
                   .filter(
@@ -306,16 +459,18 @@ export default function CreateSessionForm() {
               )}
             </div>
           </div>
-          {(sessionType === 'Partido' ||
-            sessionType === 'Partido de Temporada') && (
+
+          {isMatchSession && (
             <div className="space-y-3">
               <label className={labelStyles}>Nombre Equipo B</label>
+
               <Input
                 type="text"
                 value={teamBName}
                 onChange={(e) => setTeamBName(e.target.value)}
                 inputSize="lg"
               />
+
               <div className="flex justify-between items-center">
                 <p className={labelStyles}>Seleccionar Jugadores:</p>
                 <div className="flex space-x-2 text-xs">
@@ -335,9 +490,14 @@ export default function CreateSessionForm() {
                   </button>
                 </div>
               </div>
+
               <div className="max-h-48 overflow-y-auto space-y-2 rounded-lg p-3 bg-gray-50 dark:bg-gray-800">
                 {playersLoading ? (
                   <p>Cargando jugadores...</p>
+                ) : allPlayers.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    No hay jugadores cargados en demo mode.
+                  </p>
                 ) : (
                   allPlayers
                     .filter(
@@ -364,6 +524,7 @@ export default function CreateSessionForm() {
             </div>
           )}
         </div>
+
         <Button
           type="submit"
           variant="primary"
