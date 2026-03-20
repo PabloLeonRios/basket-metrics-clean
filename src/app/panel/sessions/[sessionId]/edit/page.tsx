@@ -1,4 +1,25 @@
 // src/app/panel/sessions/[sessionId]/edit/page.tsx
+
+/**
+ * ==========================================================
+ * NOTAS PARA PABLITO (Mongo / backend real futuro)
+ * ==========================================================
+ * Esta página resuelve únicamente el contenedor de edición.
+ *
+ * REGLAS ACTUALES:
+ * - no tocar backend
+ * - la carga/edición real debe vivir en EditSessionForm
+ * - sessionId llega por params y se pasa al componente
+ *
+ * OBJETIVO:
+ * - mantener separación clara entre routing y lógica
+ *
+ * MIGRACIÓN FUTURA:
+ * - EditSessionForm podrá leer desde Mongo/API
+ * - esta página no debería cambiar salvo por validaciones extra
+ *   o metadata
+ */
+
 import EditSessionForm from '@/components/sessions/EditSessionForm';
 
 export default async function EditSessionPage({
