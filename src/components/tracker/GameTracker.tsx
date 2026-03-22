@@ -1,7 +1,47 @@
 // src/components/tracker/GameTracker.tsx
 'use client';
 
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+/**
+ * ==========================================================
+ * NOTAS PARA PABLITO (Mongo / backend real futuro)
+ * ==========================================================
+ * ESTE TRACKER FUE ADAPTADO A DEMO MODE.
+ *
+ * REGLAS ACTUALES:
+ * - NO usa backend
+ * - NO llama /api/sessions
+ * - NO llama /api/game-events
+ * - NO llama /api/assistant/proactive-suggestion
+ * - NO usa sync real offline/backend
+ *
+ * FUENTES DEMO:
+ * - sesiones: "basket_metrics_demo_sessions"
+ * - jugadores: "basket_metrics_demo_players"
+ * - eventos tracker: "basket_metrics_demo_game_events"
+ *
+ * OBJETIVO:
+ * - que el tracker funcione end-to-end en Vercel demo
+ * - mantener flujo realista para:
+ *   - selección de jugadores
+ *   - registro de eventos
+ *   - sustituciones
+ *   - cuarto actual
+ *   - finalización de sesión
+ *   - log y stats
+ *
+ * DECISIONES DEMO:
+ * - la IA queda deshabilitada funcionalmente y devuelve sugerencia local simple
+ * - offline sync queda visualmente estable, sin cola real
+ * - los eventos se guardan en localStorage y se filtran por sessionId
+ *
+ * MIGRACIÓN FUTURA:
+ * - reemplazar storage local por endpoints reales
+ * - reconectar sugerencias IA
+ * - reconectar offline-sync real
+ * - mantener la forma general del estado para no romper UI
+ */
+
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Court from './Court';
 import GameLog from './GameLog';
@@ -9,7 +49,7 @@ import FloatingStats from './FloatingStats';
 import SubstitutionModal from './SubstitutionModal';
 import { toast } from 'react-toastify';
 import { PlayerStats } from './PlayerStatsModal';
-import { IGameEvent, IPlayer, ISession } from '@/types/definitions';
+import { IGameEvent, IPlayer } from '@/types/definitions';
 import Button from '@/components/ui/Button';
 import PlayerStatsModal from './PlayerStatsModal';
 import ShotChart from '@/components/charts/ShotChart';
@@ -25,27 +65,42 @@ import {
   MapIcon,
 } from '@heroicons/react/24/outline';
 import { ProactiveSuggestion } from '@/lib/recommender/lineupRecommender';
-import { v4 as uuidv4 } from 'uuid';
-import {
-  saveOfflineEvent,
-  getOfflineEvents,
-  deleteOfflineEvent,
-} from '@/lib/offline-sync';
 
-interface TrackerSessionData extends ISession {
-  currentQuarter: number;
-  teams: TeamData[];
+interface DemoSessionTeam {
+  _id: string;
+  name: string;
+  players: Array<string | IPlayer>;
 }
+
+interface TrackerSessionData {
+  _id: string;
+  id?: string;
+  name: string;
+  title?: string;
+  coach?: string;
+  coachId?: string;
+  sessionType: string;
+  currentQuarter: number;
+  finishedAt?: string;
+  teams: TeamData[];
+  updatedAt?: number;
+}
+
 interface TeamData {
   _id: string;
   name: string;
   players: IPlayer[];
 }
+
 interface SelectedPlayer {
   id: string;
   name: string;
   teamName: string;
 }
+
+const SESSIONS_STORAGE_KEY = 'basket_metrics_demo_sessions';
+const PLAYERS_STORAGE_KEY = 'basket_metrics_demo_players';
+const EVENTS_STORAGE_KEY = 'basket_metrics_demo_game_events';
 
 const getActionButtonClass = (eventType: string) => {
   switch (eventType) {
@@ -78,8 +133,83 @@ const getActionButtonClass = (eventType: string) => {
   }
 };
 
+function safeJsonParse<T>(value: string | null, fallback: T): T {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch (error) {
+    console.error('Error parseando JSON de localStorage:', error);
+    return fallback;
+  }
+}
+
+function getSessionStorageId(session: { _id?: string; id?: string }) {
+  return session._id || session.id || '';
+}
+
+function getAllDemoPlayers(): IPlayer[] {
+  return safeJsonParse<IPlayer[]>(localStorage.getItem(PLAYERS_STORAGE_KEY), []);
+}
+
+function getAllDemoSessions(): TrackerSessionData[] {
+  return safeJsonParse<TrackerSessionData[]>(
+    localStorage.getItem(SESSIONS_STORAGE_KEY),
+    [],
+  );
+}
+
+function saveAllDemoSessions(sessions: TrackerSessionData[]) {
+  localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(sessions));
+}
+
+function getAllDemoEvents(): IGameEvent[] {
+  return safeJsonParse<IGameEvent[]>(localStorage.getItem(EVENTS_STORAGE_KEY), []);
+}
+
+function saveAllDemoEvents(events: IGameEvent[]) {
+  localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(events));
+}
+
+function normalizeTeamPlayers(
+  teamPlayers: Array<string | IPlayer>,
+  allPlayers: IPlayer[],
+): IPlayer[] {
+  return teamPlayers
+    .map((playerRef) => {
+      if (typeof playerRef !== 'string') return playerRef;
+      return allPlayers.find((player) => player._id === playerRef) || null;
+    })
+    .filter(Boolean) as IPlayer[];
+}
+
+function buildTrackerSession(
+  rawSession: TrackerSessionData | null,
+  allPlayers: IPlayer[],
+): TrackerSessionData | null {
+  if (!rawSession) return null;
+
+  const normalizedTeams: TeamData[] = (rawSession.teams || []).map(
+    (team: DemoSessionTeam, index) => ({
+      _id: team._id || `team_${index + 1}`,
+      name: team.name,
+      players: normalizeTeamPlayers(team.players || [], allPlayers),
+    }),
+  );
+
+  return {
+    ...rawSession,
+    currentQuarter: rawSession.currentQuarter || 1,
+    teams: normalizedTeams,
+  };
+}
+
+function generateEventId() {
+  return `evt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
 export default function GameTracker({ sessionId }: { sessionId: string }) {
   const router = useRouter();
+
   const [session, setSession] = useState<TrackerSessionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -112,9 +242,8 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
   const [showBenchForTeam, setShowBenchForTeam] = useState<
     Record<string, boolean>
   >({});
-  const [isOnline, setIsOnline] = useState<boolean>(true);
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const isSyncingRef = useRef<boolean>(false);
+  const [isOnline] = useState<boolean>(true);
+  const [isSyncing] = useState<boolean>(false);
 
   const isSessionFinished = useMemo(() => !!session?.finishedAt, [session]);
   const currentQuarter = useMemo(() => session?.currentQuarter || 1, [session]);
@@ -122,6 +251,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
     () => session?.teams.flatMap((t) => t.players) || [],
     [session],
   );
+
   const playerIdToName = useMemo(
     () => Object.fromEntries(allPlayers.map((p) => [p._id, p.name])),
     [allPlayers],
@@ -151,17 +281,16 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
       session.sessionType === 'Partido' ||
       session.sessionType === 'Partido de Temporada'
     ) {
-      // Start with the first 5 players of each team
       session.teams.forEach((team: TeamData) => {
         team.players.slice(0, 5).forEach((p: IPlayer) => onCourtIds.add(p._id));
       });
 
-      // Replay all active substitution events in chronological order
       const subs = activeEvents
         .filter((e: IGameEvent) => e.type === 'substitution')
         .sort(
           (a: IGameEvent, b: IGameEvent) =>
-            new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime(),
+            new Date(a.createdAt || 0).getTime() -
+            new Date(b.createdAt || 0).getTime(),
         );
 
       subs.forEach((event: IGameEvent) => {
@@ -169,15 +298,15 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
           playerIn: { _id: string; name: string };
           playerOut: { _id: string; name: string };
         };
-        onCourtIds.delete(details.playerOut._id);
-        onCourtIds.add(details.playerIn._id);
+        if (details?.playerOut?._id) onCourtIds.delete(details.playerOut._id);
+        if (details?.playerIn?._id) onCourtIds.add(details.playerIn._id);
       });
     } else {
-      // Non-competitive sessions: everyone is "on court"
       session.teams
         .flatMap((t: TeamData) => t.players)
         .forEach((p: IPlayer) => onCourtIds.add(p._id));
     }
+
     return onCourtIds;
   }, [session, activeEvents]);
 
@@ -190,146 +319,115 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
     }
 
     for (const event of activeEvents) {
+      const details = (event.details || {}) as Record<string, unknown>;
       if (
         (event.type === 'tiro' || event.type === 'tiro_libre') &&
-        event.details.made
+        details.made
       ) {
         if (scores[event.team] !== undefined) {
-          scores[event.team] += (event.details.value as number) || 1;
+          scores[event.team] += (details.value as number) || 1;
         }
       }
     }
     return scores;
   }, [activeEvents, session]);
 
-  const syncOfflineEvents = useCallback(async () => {
-    if (!window.navigator.onLine || isSyncingRef.current) return;
-    isSyncingRef.current = true;
-    setIsSyncing(true);
+  const persistEventsForSession = useCallback(
+    (nextSessionEvents: IGameEvent[]) => {
+      const allStored = getAllDemoEvents();
+      const others = allStored.filter((evt) => String(evt.session) !== String(sessionId));
+      saveAllDemoEvents([...nextSessionEvents, ...others]);
+    },
+    [sessionId],
+  );
+
+  const persistSessionUpdate = useCallback(
+    (updateData: Partial<TrackerSessionData>) => {
+      const allSessions = getAllDemoSessions();
+      let updatedSession: TrackerSessionData | null = null;
+
+      const nextSessions = allSessions.map((item) => {
+        if (String(getSessionStorageId(item)) !== String(sessionId)) return item;
+
+        updatedSession = {
+          ...item,
+          ...updateData,
+          updatedAt: Date.now(),
+        };
+        return updatedSession;
+      });
+
+      saveAllDemoSessions(nextSessions);
+
+      if (updatedSession) {
+        const allDemoPlayers = getAllDemoPlayers();
+        const normalized = buildTrackerSession(updatedSession, allDemoPlayers);
+        setSession(normalized);
+      }
+
+      return updatedSession;
+    },
+    [sessionId],
+  );
+
+  useEffect(() => {
     try {
-      const offlineEvents = await getOfflineEvents();
-      if (offlineEvents.length === 0) {
-        setIsSyncing(false);
-        isSyncingRef.current = false;
-        return;
+      setLoading(true);
+      setError(null);
+
+      const storedPlayers = getAllDemoPlayers();
+      const storedSessions = getAllDemoSessions();
+      const storedEvents = getAllDemoEvents();
+
+      const foundSession =
+        storedSessions.find(
+          (item) => String(getSessionStorageId(item)) === String(sessionId),
+        ) || null;
+
+      if (!foundSession) {
+        throw new Error('No se encontró la sesión.');
       }
 
-      toast.info(`Sincronizando ${offlineEvents.length} eventos...`);
-      for (const event of offlineEvents) {
-        try {
-          const response = await fetch(event.url, {
-            method: event.method,
-            headers: { 'Content-Type': 'application/json' },
-            body: event.body,
-          });
+      const normalizedSession = buildTrackerSession(foundSession, storedPlayers);
+      setSession(normalizedSession);
 
-          if (response.ok) {
-            const { data: newEvent } = await response.json();
-            await deleteOfflineEvent(event.id);
-
-            // Reemplazar el evento optimista con el evento real del servidor
-            setGameEvents((prev) =>
-              prev.map((e) => (e._id === event.id ? newEvent : e)),
-            );
-          } else {
-            console.error('Error sincronizando evento:', response.status);
-            if (response.status >= 400 && response.status < 500) {
-              // Non-retriable error, remove from queue
-              await deleteOfflineEvent(event.id);
-            }
-          }
-        } catch (syncErr) {
-          console.error('Fallo de red durante la sincronización', syncErr);
-          break; // Detener la sincronización si la red falla de nuevo
-        }
-      }
-      toast.success('Sincronización completada.');
-    } catch (err) {
-      console.error('Error general de sincronización', err);
-    } finally {
-      setIsSyncing(false);
-      isSyncingRef.current = false;
-    }
-  }, []);
-
-  useEffect(() => {
-    // Initial check for online status
-    setIsOnline(window.navigator.onLine);
-
-    const handleOnline = () => {
-      setIsOnline(true);
-      syncOfflineEvents();
-    };
-    const handleOffline = () => {
-      setIsOnline(false);
-      toast.warn(
-        'Estás sin conexión. Las acciones se guardarán y se sincronizarán al recuperar la señal.',
-        { autoClose: false },
-      );
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    // Attempt sync on initial load if online
-    if (window.navigator.onLine) {
-      syncOfflineEvents();
-    }
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [syncOfflineEvents]);
-
-  useEffect(() => {
-    async function fetchSessionData() {
-      try {
-        setLoading(true);
-        const [sessionRes, eventsRes] = await Promise.all([
-          fetch(`/api/sessions/${sessionId}`),
-          fetch(`/api/game-events?sessionId=${sessionId}`),
-        ]);
-        if (!sessionRes.ok) throw new Error('Error al cargar la sesión');
-        if (!eventsRes.ok) throw new Error('Error al cargar los eventos');
-        const { data: sessionData } = await sessionRes.json();
-        const { data: eventsData } = await eventsRes.json();
-        setSession(sessionData);
-        setGameEvents(eventsData);
-
-        if (sessionData.coach) {
-          const playersRes = await fetch(
-            `/api/players?coachId=${sessionData.coach}&limit=1000&showRivals=true`,
-          );
-          if (playersRes.ok) {
-            const { data: playersData } = await playersRes.json();
-            setCoachPlayers(playersData || []);
-          }
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'Un error desconocido ha ocurrido.',
+      const sessionEvents = storedEvents
+        .filter((evt) => String(evt.session) === String(sessionId))
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt || 0).getTime() -
+            new Date(a.createdAt || 0).getTime(),
         );
-      } finally {
-        setLoading(false);
-      }
+
+      setGameEvents(sessionEvents);
+
+      const coachRef = foundSession.coachId || foundSession.coach;
+      const relatedPlayers = coachRef
+        ? storedPlayers.filter((player) => {
+            const playerCoachId = (player as IPlayer & { coachId?: string })
+              .coachId;
+            if (!playerCoachId) return true;
+            return playerCoachId === coachRef;
+          })
+        : storedPlayers;
+
+      setCoachPlayers(relatedPlayers);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Un error desconocido ha ocurrido.',
+      );
+    } finally {
+      setLoading(false);
     }
-    fetchSessionData();
   }, [sessionId]);
 
   const handleUpdateSession = useCallback(
     async (updateData: Partial<TrackerSessionData>) => {
       try {
-        const response = await fetch(`/api/sessions/${sessionId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updateData),
-        });
-        if (!response.ok) throw new Error('No se pudo actualizar la sesión.');
-        const { data: updatedSession } = await response.json();
-        setSession(updatedSession);
+        const updatedSession = persistSessionUpdate(updateData);
+        if (!updatedSession) throw new Error('No se pudo actualizar la sesión.');
         return updatedSession;
       } catch (err) {
         toast.error(
@@ -337,7 +435,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
         );
       }
     },
-    [sessionId],
+    [persistSessionUpdate],
   );
 
   const logEvent = useCallback(
@@ -377,104 +475,55 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
         toast.error('No hay jugador seleccionado.');
         return;
       }
+
       if (isSessionFinished) {
         toast.warn('La sesión ya ha finalizado.');
         return;
       }
 
-      const eventData = {
+      const newEvent: IGameEvent = {
+        _id: generateEventId(),
         session: sessionId,
         player: playerForEvent?.id,
-        team: teamForEvent,
-        type,
+        team: teamForEvent as string,
+        type: type as IGameEvent['type'],
         details,
         quarter: currentQuarter,
+        createdAt: new Date().toISOString(),
+        isUndone: false,
       };
 
-      try {
-        if (!isOnline) {
-          throw new Error('Offline mode');
-        }
+      const nextEvents = [newEvent, ...gameEvents];
+      setGameEvents(nextEvents);
+      persistEventsForSession(nextEvents);
 
-        const response = await fetch('/api/game-events', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(eventData),
-        });
-        if (!response.ok)
-          throw new Error(`No se pudo registrar el evento: ${type}`);
-
-        const { data: newEvent } = await response.json();
-        setGameEvents((prev) => [newEvent, ...prev]);
-
-        if (type === 'tiempo_muerto') {
-          toast.success(`Tiempo muerto registrado para ${teamForEvent}.`);
-        } else if (type !== 'substitution') {
-          toast.success(`'${type}' para ${playerForEvent?.name}.`);
-        }
-      } catch (err) {
-        // Fallback for offline mode or network errors
-        const isOfflineError =
-          err instanceof Error &&
-          (err.message === 'Failed to fetch' || err.message === 'Offline mode');
-        if (isOfflineError) {
-          const offlineId = uuidv4();
-          await saveOfflineEvent(
-            offlineId,
-            '/api/game-events',
-            'POST',
-            JSON.stringify(eventData),
-          );
-
-          // Update UI optimistically with the fake ID
-          const optimisticEvent: IGameEvent = {
-            _id: offlineId,
-            session: sessionId,
-            player: playerForEvent?.id,
-            team: teamForEvent as string,
-            type: type as IGameEvent['type'],
-            details,
-            quarter: currentQuarter,
-            createdAt: new Date().toISOString(),
-          };
-
-          setGameEvents((prev) => [optimisticEvent, ...prev]);
-
-          if (type === 'tiempo_muerto') {
-            toast.success(
-              `(Offline) Tiempo muerto guardado para ${teamForEvent}.`,
-            );
-          } else if (type !== 'substitution') {
-            toast.success(
-              `(Offline) '${type}' guardado para ${playerForEvent?.name}.`,
-            );
-          }
-        } else {
-          toast.error(
-            err instanceof Error ? err.message : 'Error al registrar evento.',
-          );
-        }
+      if (type === 'tiempo_muerto') {
+        toast.success(`Tiempo muerto registrado para ${teamForEvent}.`);
+      } else if (type !== 'substitution') {
+        toast.success(`'${type}' para ${playerForEvent?.name}.`);
       }
     },
     [
       selectedPlayer,
-      sessionId,
       isSessionFinished,
+      sessionId,
       currentQuarter,
+      gameEvents,
+      persistEventsForSession,
       session,
-      isOnline,
     ],
   );
 
   const handleSubstitution = (playerOut: IPlayer, playerIn: IPlayer) => {
-    if (isSessionFinished) return;
+    if (isSessionFinished || !session) return;
 
-    // Check if playerIn is from extraPlayers and not in the current team
-    const teamIndex = session?.teams.findIndex((t) =>
+    const teamIndex = session.teams.findIndex((t) =>
       t.players.some((p) => p._id === playerOut._id),
     );
-    if (session && teamIndex !== undefined && teamIndex !== -1) {
+
+    if (teamIndex !== -1) {
       const team = session.teams[teamIndex];
+
       if (!team.players.some((p) => p._id === playerIn._id)) {
         const updatedTeams = [...session.teams];
         updatedTeams[teamIndex] = {
@@ -482,7 +531,6 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
           players: [...team.players, playerIn],
         };
 
-        // This will update both local state and backend
         handleUpdateSession({ teams: updatedTeams });
       }
     }
@@ -491,12 +539,17 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
       playerIn: { _id: playerIn._id, name: playerIn.name },
       playerOut: { _id: playerOut._id, name: playerOut.name },
     });
+
     toast.success(`${playerIn.name} entra por ${playerOut.name}.`);
+
     if (showSubModal) {
       setShowSubModal(false);
       setPlayerToSubOut(null);
     }
-    if (showAISuggestionModal) setShowAISuggestionModal(false);
+
+    if (showAISuggestionModal) {
+      setShowAISuggestionModal(false);
+    }
   };
 
   const handleAdvanceQuarter = () => {
@@ -508,6 +561,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
       handleUpdateSession({ currentQuarter: currentQuarter + 1 });
     }
   };
+
   const handleFinishSession = async () => {
     if (!isSessionFinished && confirm('¿Finalizar esta sesión?')) {
       const updated = await handleUpdateSession({
@@ -523,57 +577,58 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
   const handleRedoEvent = async (eventId: string) => {
     if (isSessionFinished) return;
 
-    const eventToRedo = gameEvents.find((e) => e._id === eventId);
-    if (!eventToRedo) return;
+    const nextEvents = gameEvents.map((e) =>
+      e._id === eventId ? { ...e, isUndone: false } : e,
+    );
 
-    try {
-      const response = await fetch(`/api/game-events/${eventId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isUndone: false }),
-      });
-      if (!response.ok) throw new Error('Error al rehacer el evento.');
-
-      setGameEvents((prev) =>
-        prev.map((e) => (e._id === eventId ? { ...e, isUndone: false } : e)),
-      );
-      toast.success('Evento rehecho.');
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Error desconocido al rehacer.',
-      );
-    }
+    setGameEvents(nextEvents);
+    persistEventsForSession(nextEvents);
+    toast.success('Evento rehecho.');
   };
 
   const handleGetProactiveSuggestion = async () => {
     setLoadingAISuggestion(true);
     setShowAISuggestionModal(true);
     setAiSuggestion(null);
+
     try {
       const activeTeam = session?.teams[0];
       const teamPlayerIds = activeTeam
         ? activeTeam.players.map((p) => p._id)
         : allPlayers.map((p) => p._id);
+
       const teamOnCourtIds = Array.from(onCourtPlayerIds).filter((id) =>
         teamPlayerIds.includes(id),
       );
 
-      const response = await fetch('/api/assistant/proactive-suggestion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          allPlayerIds: teamPlayerIds,
-          onCourtPlayerIds: teamOnCourtIds,
-          sessionId: sessionId,
-          currentQuarter: currentQuarter,
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.message || 'Error al obtener sugerencia.');
-      setAiSuggestion(data.data);
+      const benchPlayers = activeTeam
+        ? activeTeam.players.filter((p) => !teamOnCourtIds.includes(p._id))
+        : [];
+
+      if (teamOnCourtIds.length >= 5 && benchPlayers.length > 0) {
+        const playerOutId = teamOnCourtIds[0];
+        const playerIn = benchPlayers[0];
+        const playerOut = activeTeam?.players.find((p) => p._id === playerOutId);
+
+        if (playerOut && playerIn) {
+          setAiSuggestion({
+            type: 'SUSTITUCION',
+            reason: 'sugerencia demo para refrescar el quinteto en cancha',
+            playerOut: { playerId: playerOut._id, name: playerOut.name },
+            playerIn: { playerId: playerIn._id, name: playerIn.name },
+          } as ProactiveSuggestion);
+        } else {
+          setAiSuggestion({
+            type: 'POSITIVA',
+            reason: 'el equipo se ve estable en esta fase del partido.',
+          } as ProactiveSuggestion);
+        }
+      } else {
+        setAiSuggestion({
+          type: 'POSITIVA',
+          reason: 'no hay una sugerencia crítica por el momento en modo demo.',
+        } as ProactiveSuggestion);
+      }
     } catch (err) {
       toast.error(
         err instanceof Error
@@ -616,24 +671,13 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
   const handleUndoEvent = async (eventId: string) => {
     if (isSessionFinished) return;
 
-    const eventToUndo = gameEvents.find((e) => e._id === eventId);
-    if (!eventToUndo) return;
+    const nextEvents = gameEvents.map((e) =>
+      e._id === eventId ? { ...e, isUndone: true } : e,
+    );
 
-    try {
-      const response = await fetch(`/api/game-events/${eventId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isUndone: true }),
-      });
-      if (!response.ok) throw new Error('Error al deshacer el evento.');
-
-      setGameEvents((prev) =>
-        prev.map((e) => (e._id === eventId ? { ...e, isUndone: true } : e)),
-      );
-      toast.success('Evento deshecho correctamente.');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Error al deshacer.');
-    }
+    setGameEvents(nextEvents);
+    persistEventsForSession(nextEvents);
+    toast.success('Evento deshecho correctamente.');
   };
 
   const handleShot = (made: boolean) => {
@@ -646,8 +690,9 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
     setShowShotModal(false);
     setShotCoordinates(null);
   };
+
   const handleFreeThrow = (made: boolean) => {
-    logEvent('tiro_libre', { made });
+    logEvent('tiro_libre', { made, value: 1 });
     setShowFreeThrowModal(false);
   };
 
@@ -670,16 +715,18 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
         PTS: 0,
         FR: 0,
       };
+
       for (const event of activeEvents) {
         if (event.player !== playerId) continue;
-        const details = event.details as Record<string, unknown>;
+        const details = (event.details || {}) as Record<string, unknown>;
+
         switch (event.type) {
           case 'tiro':
             stats.FGA++;
             if (details.value === 3) stats['3PA']++;
             if (details.made) {
               stats.FGM++;
-              stats.PTS += details.value as number;
+              stats.PTS += (details.value as number) || 0;
               if (details.value === 3) stats['3PM']++;
             }
             break;
@@ -693,6 +740,12 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
           case 'rebote':
             if (details.type === 'ofensivo') stats.ORB++;
             else stats.DRB++;
+            break;
+          case 'rebote_ofensivo':
+            stats.ORB++;
+            break;
+          case 'rebote_defensivo':
+            stats.DRB++;
             break;
           case 'asistencia':
             stats.AST++;
@@ -714,6 +767,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
             break;
         }
       }
+
       return stats;
     },
     [activeEvents],
@@ -723,6 +777,17 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
     const stats = calculateStatsForPlayer(player._id);
     setStatsPlayer({ player, stats });
     setShowPlayerStatsModal(true);
+  };
+
+  const logEventForPlayer = (
+    playerId: string,
+    playerName: string,
+    teamName: string,
+    type: string,
+    details: Record<string, unknown>,
+  ) => {
+    void playerName;
+    logEvent(type, details, playerId, teamName);
   };
 
   const bindPlayerCard = useDrag(
@@ -736,13 +801,11 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
         }
 
         if (sx > 0) {
-          // Swipe right -> Rebote Defensivo
           logEventForPlayer(player._id, player.name, player.team, 'rebote', {
             type: 'defensivo',
           });
           toast.success(`Rebote defensivo: ${player.name}`);
         } else if (sx < 0) {
-          // Swipe left -> Falta
           logEventForPlayer(player._id, player.name, player.team, 'falta', {});
           toast.success(`Falta: ${player.name}`);
         }
@@ -750,16 +813,6 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
     },
     { swipe: { distance: 40 } },
   );
-
-  const logEventForPlayer = (
-    playerId: string,
-    playerName: string,
-    teamName: string,
-    type: string,
-    details: Record<string, unknown>,
-  ) => {
-    logEvent(type, details, playerId, teamName);
-  };
 
   if (loading)
     return <div className="p-8 text-center">Cargando tracker...</div>;
@@ -774,7 +827,6 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
 
   return (
     <>
-      {/* Mobile Landscape Prompt */}
       <div className="md:hidden bg-yellow-100 text-yellow-800 p-3 text-center text-sm font-bold m-4 rounded-md shadow flex items-center justify-center gap-2">
         <ExclamationTriangleIcon className="h-5 w-5" />
         Para una mejor experiencia, gira tu dispositivo en horizontal.
@@ -805,6 +857,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                   </span>
                 )}
               </div>
+
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowShotChartModal(true)}
@@ -813,11 +866,14 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                 >
                   <MapIcon className="h-5 w-5" />
                 </button>
+
                 {!isSessionFinished && (
                   <button
                     onClick={handleGetProactiveSuggestion}
                     disabled={loadingAISuggestion}
-                    className={`bg-blue-600 text-white p-2 rounded-full shadow-md hover:bg-blue-700 transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed ${aiSuggestion ? 'animate-pulse' : ''}`}
+                    className={`bg-blue-600 text-white p-2 rounded-full shadow-md hover:bg-blue-700 transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed ${
+                      aiSuggestion ? 'animate-pulse' : ''
+                    }`}
                     title="Sugerencia de IA"
                   >
                     <LightBulbIcon className="h-5 w-5" />
@@ -825,6 +881,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                 )}
               </div>
             </div>
+
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between text-base">
                 <span>Cuarto:</span>
@@ -832,6 +889,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                   {currentQuarter}
                 </span>
               </div>
+
               <div className="flex gap-2">
                 {currentQuarter > 1 && (
                   <Button
@@ -848,16 +906,20 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                     Volver Cuarto
                   </Button>
                 )}
+
                 <Button
                   onClick={handleAdvanceQuarter}
                   disabled={isSessionFinished || currentQuarter >= 10}
-                  className={`${currentQuarter > 1 ? 'w-1/2' : 'w-full'} justify-center flex items-center text-xs py-1.5`}
+                  className={`${
+                    currentQuarter > 1 ? 'w-1/2' : 'w-full'
+                  } justify-center flex items-center text-xs py-1.5`}
                   size="sm"
                 >
                   Siguiente Cuarto
                   <ArrowRightIcon className="h-4 w-4 ml-1" />
                 </Button>
               </div>
+
               <Button
                 onClick={handleFinishSession}
                 disabled={isSessionFinished}
@@ -870,6 +932,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               </Button>
             </div>
           </div>
+
           {session.teams.map((team) => {
             const timeOutsCount = activeEvents.filter(
               (e) =>
@@ -881,9 +944,11 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
             const isPartido =
               session.sessionType === 'Partido' ||
               session.sessionType === 'Partido de Temporada';
+
             const hasSubbedOutPlayers =
               isPartido &&
               team.players.some((p) => !onCourtPlayerIds.has(p._id));
+
             const showBench = showBenchForTeam[team._id] || false;
 
             return (
@@ -904,6 +969,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                     TM: {timeOutsCount}
                   </button>
                 </div>
+
                 <div className="flex relative items-stretch">
                   <div className="space-y-1 flex-grow">
                     {team.players.map((player) => {
@@ -918,6 +984,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
 
                       let foulColorClass = '';
                       let foulIconColorClass = '';
+
                       if (foulCount === 1) {
                         foulColorClass = 'text-green-600';
                         foulIconColorClass = 'text-green-500';
@@ -939,7 +1006,9 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                         <div
                           key={player._id}
                           {...bindPlayerCard(player)}
-                          className={`flex items-center justify-between touch-pan-y ${isSubbedOut ? 'opacity-50' : ''}`}
+                          className={`flex items-center justify-between touch-pan-y ${
+                            isSubbedOut ? 'opacity-50' : ''
+                          }`}
                         >
                           <button
                             onClick={() =>
@@ -949,25 +1018,42 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                                 teamName: team.name,
                               })
                             }
-                            className={`flex-grow flex items-center text-left p-2 rounded-md ${selectedPlayer?.id === player._id ? 'bg-blue-500 text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                            className={`flex-grow flex items-center text-left p-2 rounded-md ${
+                              selectedPlayer?.id === player._id
+                                ? 'bg-blue-500 text-white'
+                                : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                            }`}
                           >
                             {isPartido && (
                               <span
-                                className={`inline-block h-2.5 w-2.5 rounded-full mr-2 ${isOnCourt ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}
+                                className={`inline-block h-2.5 w-2.5 rounded-full mr-2 ${
+                                  isOnCourt ? 'bg-green-400 animate-pulse' : 'bg-gray-400'
+                                }`}
                               ></span>
                             )}
+
                             <span
-                              className={`flex-grow ${foulCount > 0 && selectedPlayer?.id !== player._id ? foulColorClass : ''}`}
+                              className={`flex-grow ${
+                                foulCount > 0 && selectedPlayer?.id !== player._id
+                                  ? foulColorClass
+                                  : ''
+                              }`}
                             >
                               #{player.dorsal} - {player.name}
                             </span>
+
                             {foulCount > 0 && (
                               <ExclamationTriangleIcon
-                                className={`h-5 w-5 ml-2 ${selectedPlayer?.id === player._id ? 'text-white' : foulIconColorClass}`}
+                                className={`h-5 w-5 ml-2 ${
+                                  selectedPlayer?.id === player._id
+                                    ? 'text-white'
+                                    : foulIconColorClass
+                                }`}
                                 title={`${foulCount} falta${foulCount === 1 ? '' : 's'}`}
                               />
                             )}
                           </button>
+
                           <div className="flex ml-1">
                             {isPartido && isOnCourt && (
                               <button
@@ -981,6 +1067,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                                 <ArrowsRightLeftIcon className="h-5 w-5" />
                               </button>
                             )}
+
                             <button
                               onClick={() => handleShowPlayerStats(player)}
                               className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full"
@@ -993,6 +1080,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                       );
                     })}
                   </div>
+
                   {hasSubbedOutPlayers && (
                     <div className="flex-shrink-0 flex items-stretch border-l border-gray-100 dark:border-gray-700 ml-1 pl-1">
                       <button
@@ -1020,8 +1108,8 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
             );
           })}
         </div>
+
         <div className="flex-1 lg:max-w-2xl mx-auto flex flex-col gap-4">
-          {/* Scoreboard */}
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow flex justify-between items-center text-center">
             {session.sessionType === 'Partido' ||
             session.sessionType === 'Partido de Temporada' ? (
@@ -1034,12 +1122,14 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                     {teamScores[session.teams[0]?.name] || 0}
                   </div>
                 </div>
+
                 <div className="w-1/3 text-gray-500">
                   <div className="text-sm font-semibold uppercase tracking-widest">
                     Cuarto
                   </div>
                   <div className="text-2xl font-bold">{currentQuarter}</div>
                 </div>
+
                 <div className="w-1/3">
                   <div className="text-xl font-bold truncate">
                     {session.teams[1]?.name || 'Equipo B'}
@@ -1059,6 +1149,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                     {Object.values(teamScores).reduce((a, b) => a + b, 0)}
                   </div>
                 </div>
+
                 <div className="w-1/2 text-gray-500 border-l border-gray-200 dark:border-gray-700">
                   <div className="text-sm font-semibold uppercase tracking-widest">
                     Cuarto
@@ -1070,6 +1161,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
           </div>
 
           <Court onClick={handleCourtClick} shotCoordinates={shotCoordinates} />
+
           <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow mt-2">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="font-bold text-lg truncate">Acciones Rápidas</h3>
@@ -1078,7 +1170,6 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               </span>
             </div>
 
-            {/* Quick Player Selector for Mobile/Tablet */}
             <div className="lg:hidden flex gap-2 overflow-x-auto pb-2 mb-3 snap-x">
               {session.teams.flatMap((team) =>
                 team.players
@@ -1118,6 +1209,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               >
                 AST
               </Button>
+
               <Button
                 size="sm"
                 onClick={() => logEvent('robo', {})}
@@ -1130,6 +1222,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               >
                 ROBO
               </Button>
+
               <Button
                 size="sm"
                 onClick={() => logEvent('tapon', {})}
@@ -1142,6 +1235,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               >
                 TAP
               </Button>
+
               <Button
                 size="sm"
                 onClick={() => logEvent('perdida', {})}
@@ -1154,6 +1248,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               >
                 PER
               </Button>
+
               <Button
                 size="sm"
                 onClick={() => logEvent('rebote', {})}
@@ -1166,6 +1261,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               >
                 REBOTE
               </Button>
+
               <Button
                 size="sm"
                 onClick={() => logEvent('falta', {})}
@@ -1178,6 +1274,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               >
                 FAL-C
               </Button>
+
               <Button
                 size="sm"
                 onClick={() => logEvent('falta_recibida', {})}
@@ -1190,6 +1287,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               >
                 FAL-R
               </Button>
+
               <Button
                 size="sm"
                 onClick={() => setShowFreeThrowModal(true)}
@@ -1202,6 +1300,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               >
                 LIBRE
               </Button>
+
               <Button
                 size="sm"
                 onClick={() => handleQuickShot(2)}
@@ -1214,6 +1313,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               >
                 DOBLE
               </Button>
+
               <Button
                 size="sm"
                 onClick={() => handleQuickShot(3)}
@@ -1228,8 +1328,10 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               </Button>
             </div>
           </div>
+
           <FloatingStats events={activeEvents} />
         </div>
+
         <div className="w-full lg:w-1/4">
           <GameLog
             events={gameEvents}
@@ -1241,6 +1343,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
           />
         </div>
       </div>
+
       <SubstitutionModal
         isOpen={showSubModal}
         onClose={() => setShowSubModal(false)}
@@ -1256,6 +1359,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
           handleSubstitution(playerToSubOut!, playerIn)
         }
       />
+
       {showShotChartModal && (
         <div
           className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4"
@@ -1291,7 +1395,14 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                   y: (e.details as Record<string, unknown>).y as number,
                   made: (e.details as Record<string, unknown>).made as boolean,
                 }))}
-              title={`Tiros Registrados (${activeEvents.filter((e) => e.type === 'tiro' && e.details && typeof (e.details as Record<string, unknown>).x === 'number').length})`}
+              title={`Tiros Registrados (${
+                activeEvents.filter(
+                  (e) =>
+                    e.type === 'tiro' &&
+                    e.details &&
+                    typeof (e.details as Record<string, unknown>).x === 'number',
+                ).length
+              })`}
             />
 
             <div className="mt-4 flex justify-end">
@@ -1316,6 +1427,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               <LightBulbIcon className="h-6 w-6 text-yellow-400" />
               Sugerencia de la IA
             </h3>
+
             {loadingAISuggestion ? (
               <p>Pensando...</p>
             ) : aiSuggestion ? (
@@ -1331,6 +1443,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                       </strong>{' '}
                       porque {aiSuggestion.reason}
                     </p>
+
                     <p className="mb-4">
                       El reemplazo recomendado es{' '}
                       <strong className="text-green-500">
@@ -1338,6 +1451,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                       </strong>
                       .
                     </p>
+
                     <div className="flex justify-end gap-4 mt-6">
                       <Button
                         variant="secondary"
@@ -1345,22 +1459,24 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                       >
                         Ignorar
                       </Button>
+
                       <Button
                         onClick={() => {
-                          const playerOutObj = allPlayers.find(
+                          const playerOut = allPlayers.find(
                             (p) =>
                               p._id ===
                               (aiSuggestion.playerOut as { playerId: string })
                                 .playerId,
                           );
-                          const playerInObj = allPlayers.find(
+                          const playerIn = allPlayers.find(
                             (p) =>
                               p._id ===
                               (aiSuggestion.playerIn as { playerId: string })
                                 .playerId,
                           );
-                          if (playerOutObj && playerInObj)
-                            handleSubstitution(playerOutObj, playerInObj);
+                          if (playerOut && playerIn) {
+                            handleSubstitution(playerOut, playerIn);
+                          }
                         }}
                       >
                         <ArrowsRightLeftIcon className="h-5 w-5 mr-2" />
@@ -1371,10 +1487,15 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                 ) : (
                   <>
                     <p
-                      className={`mb-4 ${aiSuggestion.type === 'POSITIVA' ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}
+                      className={`mb-4 ${
+                        aiSuggestion.type === 'POSITIVA'
+                          ? 'text-green-600 dark:text-green-400'
+                          : 'text-orange-600 dark:text-orange-400'
+                      }`}
                     >
                       {aiSuggestion.reason}
                     </p>
+
                     <div className="flex justify-end mt-6">
                       <Button onClick={() => setShowAISuggestionModal(false)}>
                         Entendido
@@ -1389,10 +1510,14 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
           </div>
         </div>
       )}
+
       {showShotModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-20">
           <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl space-y-4">
-            <h3 className="text-2xl font-bold text-center">{`Tiro de ${shotValue} Puntos`}</h3>
+            <h3 className="text-2xl font-bold text-center">
+              {`Tiro de ${shotValue} Puntos`}
+            </h3>
+
             <div className="flex justify-center gap-4">
               <Button
                 onClick={() => handleShot(true)}
@@ -1401,6 +1526,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               >
                 Anotado
               </Button>
+
               <Button
                 onClick={() => handleShot(false)}
                 variant="danger"
@@ -1409,6 +1535,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                 Fallado
               </Button>
             </div>
+
             <button
               onClick={() => setShowShotModal(false)}
               className="mt-4 text-sm text-gray-500"
@@ -1418,10 +1545,12 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
           </div>
         </div>
       )}
+
       {showFreeThrowModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-20">
           <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl space-y-4">
             <h3 className="text-2xl font-bold text-center">Tiro Libre</h3>
+
             <div className="flex justify-center gap-4">
               <Button
                 onClick={() => handleFreeThrow(true)}
@@ -1430,6 +1559,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               >
                 Anotado
               </Button>
+
               <Button
                 onClick={() => handleFreeThrow(false)}
                 variant="danger"
@@ -1438,6 +1568,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                 Fallado
               </Button>
             </div>
+
             <button
               onClick={() => setShowFreeThrowModal(false)}
               className="mt-4 text-sm text-gray-500"
@@ -1447,6 +1578,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
           </div>
         </div>
       )}
+
       {showPlayerStatsModal && statsPlayer && (
         <PlayerStatsModal
           isOpen={showPlayerStatsModal}
