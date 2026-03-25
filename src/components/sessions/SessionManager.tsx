@@ -30,6 +30,12 @@
  * - reemplazar saveSessionsToStorage por PUT/PATCH reales
  * - reemplazar handleCalculateStats por POST /api/engine/calculate/:id
  * - conservar, si se puede, la forma general del objeto para no romper UI
+ *
+ * NOTA VISUAL:
+ * - Se compactó el manager para reducir aire vertical y mejorar la jerarquía.
+ * - No se toca la lógica operativa.
+ * - La composición ahora apunta a un módulo más premium y vendible:
+ *   tabs + acciones arriba, grilla más inmediata, paginación más limpia.
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -161,6 +167,16 @@ export default function SessionManager() {
     }
   }, [user, authLoading]);
 
+  const openSessionsCount = useMemo(
+    () => allSessions.filter((session) => isSessionOpen(session)).length,
+    [allSessions],
+  );
+
+  const closedSessionsCount = useMemo(
+    () => allSessions.filter((session) => !isSessionOpen(session)).length,
+    [allSessions],
+  );
+
   const filteredSessions = useMemo(() => {
     return allSessions.filter((session) =>
       activeTab === 'open' ? isSessionOpen(session) : !isSessionOpen(session),
@@ -290,40 +306,51 @@ export default function SessionManager() {
     }
   };
 
-  if (loading) return <p>Cargando datos...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-white/70 backdrop-blur-sm">
+        Cargando datos...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-5 text-sm text-red-300">
+        {error}
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-          <div className="flex items-center border-b border-gray-200 dark:border-gray-700">
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center border-b border-white/10">
             <button
               onClick={() => setActiveTab('open')}
-              className={`px-4 py-2 text-sm font-medium ${
+              className={`px-4 py-2 text-sm font-medium transition ${
                 activeTab === 'open'
-                  ? 'border-b-2 border-blue-500 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'border-b-2 border-cyan-400 text-cyan-300'
+                  : 'text-white/55 hover:text-white'
               }`}
             >
-              Abiertas (
-              {allSessions.filter((session) => isSessionOpen(session)).length})
+              Abiertas ({openSessionsCount})
             </button>
 
             <button
               onClick={() => setActiveTab('closed')}
-              className={`px-4 py-2 text-sm font-medium ${
+              className={`px-4 py-2 text-sm font-medium transition ${
                 activeTab === 'closed'
-                  ? 'border-b-2 border-blue-500 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'border-b-2 border-cyan-400 text-cyan-300'
+                  : 'text-white/55 hover:text-white'
               }`}
             >
-              Cerradas (
-              {allSessions.filter((session) => !isSessionOpen(session)).length})
+              Cerradas ({closedSessionsCount})
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Link href="/panel/sessions/new">
               <Button variant="primary">Nueva Sesión</Button>
             </Link>
@@ -333,7 +360,7 @@ export default function SessionManager() {
               onClick={exportToExcel}
               className="flex items-center gap-2"
             >
-              <ArrowDownTrayIcon className="w-4 h-4" />
+              <ArrowDownTrayIcon className="h-4 w-4" />
               Excel
             </Button>
 
@@ -342,17 +369,30 @@ export default function SessionManager() {
               onClick={exportToPDF}
               className="flex items-center gap-2"
             >
-              <ArrowDownTrayIcon className="w-4 h-4" />
+              <ArrowDownTrayIcon className="h-4 w-4" />
               PDF
             </Button>
           </div>
         </div>
 
-        {paginatedSessions.length === 0 && totalSessions === 0 && (
-          <p>No hay sesiones en esta categoría.</p>
-        )}
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-white/45">
+          <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">
+            Total visibles: {totalSessions}
+          </span>
+          <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">
+            Página {currentPage} de {totalPages}
+          </span>
+        </div>
+      </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {paginatedSessions.length === 0 && totalSessions === 0 && (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-10 text-center text-sm text-white/60">
+          No hay sesiones en esta categoría.
+        </div>
+      )}
+
+      {totalSessions > 0 && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {paginatedSessions.map((session) => {
             const sessionId = getSessionId(session);
             const isClosed = !!session.finishedAt;
@@ -360,16 +400,16 @@ export default function SessionManager() {
             return (
               <div
                 key={sessionId}
-                className="group relative rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-white/[0.02] p-5 flex flex-col justify-between transition-all duration-300 hover:scale-[1.02] hover:border-cyan-400/30 hover:shadow-[0_0_25px_rgba(34,211,238,0.15)]"
+                className="group relative flex flex-col justify-between rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-white/[0.02] p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-400/30 hover:shadow-[0_0_25px_rgba(34,211,238,0.12)]"
               >
-                <div className="mb-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-lg font-semibold text-white leading-tight">
+                <div className="mb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="line-clamp-2 text-base font-semibold leading-tight text-white">
                       {session.name}
                     </h3>
 
                     <span
-                      className={`text-xs px-2 py-1 rounded-full border ${
+                      className={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-medium ${
                         isClosed
                           ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
                           : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
@@ -379,27 +419,28 @@ export default function SessionManager() {
                     </span>
                   </div>
 
-                  <p className="text-xs text-white/50 mt-1">
+                  <p className="mt-1 text-xs text-white/45">
                     {session.sessionType}
                   </p>
                 </div>
 
-                <div className="text-sm text-white/60 space-y-1">
+                <div className="space-y-1.5 text-sm text-white/60">
                   <p>🕒 {new Date(session.date).toLocaleString()}</p>
 
                   {session.finishedAt && (
                     <p className="text-emerald-400">
-                      ✔ Finalizada: {new Date(session.finishedAt).toLocaleString()}
+                      ✔ Finalizada:{' '}
+                      {new Date(session.finishedAt).toLocaleString()}
                     </p>
                   )}
                 </div>
 
-                <div className="mt-5 flex flex-col gap-2">
+                <div className="mt-4 flex flex-col gap-2">
                   {!isClosed && (
                     <>
                       <Link
                         href={`/panel/tracker/${sessionId}`}
-                        className="w-full text-center rounded-lg bg-cyan-500/90 hover:bg-cyan-400 text-black font-semibold py-2 transition"
+                        className="w-full rounded-lg bg-cyan-500/90 py-2 text-center font-semibold text-black transition hover:bg-cyan-400"
                       >
                         Tracker
                       </Link>
@@ -408,7 +449,7 @@ export default function SessionManager() {
                         session.sessionType === 'Partido de Temporada') && (
                         <Link
                           href={`/panel/sessions/${sessionId}/clock`}
-                          className="w-full text-center rounded-lg bg-orange-500 hover:bg-orange-400 text-white font-semibold py-2 transition"
+                          className="w-full rounded-lg bg-orange-500 py-2 text-center font-semibold text-white transition hover:bg-orange-400"
                         >
                           Reloj
                         </Link>
@@ -416,7 +457,7 @@ export default function SessionManager() {
 
                       <Link
                         href={`/panel/sessions/${sessionId}/edit`}
-                        className="w-full text-center rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black font-semibold py-2 transition"
+                        className="w-full rounded-lg bg-yellow-500 py-2 text-center font-semibold text-black transition hover:bg-yellow-400"
                       >
                         Editar
                       </Link>
@@ -443,7 +484,7 @@ export default function SessionManager() {
                   {(isClosed || calculationStatus[sessionId] === 'done') && (
                     <Link
                       href={`/panel/dashboard/${sessionId}`}
-                      className="w-full text-center rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold py-2 transition"
+                      className="w-full rounded-lg bg-emerald-500 py-2 text-center font-semibold text-black transition hover:bg-emerald-400"
                     >
                       Ver Resumen
                     </Link>
@@ -453,7 +494,7 @@ export default function SessionManager() {
                     <Button
                       onClick={() => handleReopenSession(sessionId)}
                       variant="secondary"
-                      className="w-full justify-center flex items-center bg-gray-500 hover:bg-gray-600 text-white mt-2"
+                      className="mt-1 flex w-full items-center justify-center bg-gray-500 text-white hover:bg-gray-600"
                     >
                       Reabrir Sesión
                     </Button>
@@ -463,45 +504,45 @@ export default function SessionManager() {
             );
           })}
         </div>
+      )}
 
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center space-x-2 mt-8">
+      {totalPages > 1 && (
+        <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+          <Button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            variant="secondary"
+            size="sm"
+          >
+            Anterior
+          </Button>
+
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
             <Button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              variant="secondary"
+              key={page}
+              onClick={() => handlePageChange(page)}
+              variant={currentPage === page ? 'primary' : 'secondary'}
               size="sm"
+              className={
+                currentPage === page
+                  ? 'bg-cyan-500 text-black hover:bg-cyan-400'
+                  : 'bg-white/5 text-white hover:bg-white/10'
+              }
             >
-              Anterior
+              {page}
             </Button>
+          ))}
 
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                onClick={() => handlePageChange(page)}
-                variant={currentPage === page ? 'primary' : 'secondary'}
-                size="sm"
-                className={
-                  currentPage === page
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700'
-                }
-              >
-                {page}
-              </Button>
-            ))}
-
-            <Button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              variant="secondary"
-              size="sm"
-            >
-              Siguiente
-            </Button>
-          </div>
-        )}
-      </div>
+          <Button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            variant="secondary"
+            size="sm"
+          >
+            Siguiente
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
