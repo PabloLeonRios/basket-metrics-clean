@@ -39,6 +39,13 @@
  * - reconectar sugerencias IA
  * - reconectar offline-sync real
  * - mantener la forma general del estado para no romper UI
+ *
+ * NOTA IMPORTANTE DE MODELO:
+ * - Se unificó el criterio de rebotes para evitar inconsistencias de tipos.
+ * - El tracker usa UN solo evento base: "rebote".
+ * - El subtipo va en details.type = "ofensivo" | "defensivo".
+ * - NO usar "rebote_ofensivo" ni "rebote_defensivo" como event.type
+ *   hasta que Pablito redefina formalmente IGameEvent en backend/Mongo.
  */
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
@@ -335,7 +342,9 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
   const persistEventsForSession = useCallback(
     (nextSessionEvents: IGameEvent[]) => {
       const allStored = getAllDemoEvents();
-      const others = allStored.filter((evt) => String(evt.session) !== String(sessionId));
+      const others = allStored.filter(
+        (evt) => String(evt.session) !== String(sessionId),
+      );
       saveAllDemoEvents([...nextSessionEvents, ...others]);
     },
     [sessionId],
@@ -730,6 +739,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               if (details.value === 3) stats['3PM']++;
             }
             break;
+
           case 'tiro_libre':
             stats.FTA++;
             if (details.made) {
@@ -737,31 +747,32 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               stats.PTS++;
             }
             break;
+
           case 'rebote':
             if (details.type === 'ofensivo') stats.ORB++;
             else stats.DRB++;
             break;
-          case 'rebote_ofensivo':
-            stats.ORB++;
-            break;
-          case 'rebote_defensivo':
-            stats.DRB++;
-            break;
+
           case 'asistencia':
             stats.AST++;
             break;
+
           case 'robo':
             stats.STL++;
             break;
+
           case 'tapon':
             stats.BLK++;
             break;
+
           case 'perdida':
             stats.TOV++;
             break;
+
           case 'falta':
             stats.PF++;
             break;
+
           case 'falta_recibida':
             stats.FR = (stats.FR || 0) + 1;
             break;
@@ -827,20 +838,20 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
 
   return (
     <>
-      <div className="md:hidden bg-yellow-100 text-yellow-800 p-3 text-center text-sm font-bold m-4 rounded-md shadow flex items-center justify-center gap-2">
+      <div className="m-4 flex items-center justify-center gap-2 rounded-md bg-yellow-100 p-3 text-center text-sm font-bold text-yellow-800 shadow md:hidden">
         <ExclamationTriangleIcon className="h-5 w-5" />
         Para una mejor experiencia, gira tu dispositivo en horizontal.
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 p-4">
-        <div className="w-full lg:w-1/4 space-y-4">
-          <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow">
-            <div className="flex justify-between items-center mb-3">
+      <div className="flex flex-col gap-4 p-4 lg:flex-row">
+        <div className="w-full space-y-4 lg:w-1/4">
+          <div className="rounded-lg bg-white p-3 shadow dark:bg-gray-800">
+            <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-lg">Control del Partido</h3>
+                <h3 className="text-lg font-bold">Control del Partido</h3>
                 {!isOnline && (
                   <span
-                    className="flex items-center gap-1 bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded-full dark:bg-red-900/50 dark:text-red-300"
+                    className="flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800 dark:bg-red-900/50 dark:text-red-300"
                     title="Estás sin conexión"
                   >
                     <ExclamationTriangleIcon className="h-3 w-3" />
@@ -849,7 +860,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                 )}
                 {isSyncing && (
                   <span
-                    className="flex items-center gap-1 bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full dark:bg-blue-900/50 dark:text-blue-300"
+                    className="flex items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-900/50 dark:text-blue-300"
                     title="Sincronizando datos"
                   >
                     <ArrowsRightLeftIcon className="h-3 w-3 animate-spin" />
@@ -861,7 +872,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowShotChartModal(true)}
-                  className="bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 p-2 rounded-full shadow-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-300 flex items-center justify-center"
+                  className="flex items-center justify-center rounded-full bg-gray-100 p-2 text-gray-700 shadow-md transition-all duration-300 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                   title="Mapa de Tiros"
                 >
                   <MapIcon className="h-5 w-5" />
@@ -871,7 +882,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                   <button
                     onClick={handleGetProactiveSuggestion}
                     disabled={loadingAISuggestion}
-                    className={`bg-blue-600 text-white p-2 rounded-full shadow-md hover:bg-blue-700 transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed ${
+                    className={`flex items-center justify-center rounded-full bg-blue-600 p-2 text-white shadow-md transition-all duration-300 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 ${
                       aiSuggestion ? 'animate-pulse' : ''
                     }`}
                     title="Sugerencia de IA"
@@ -885,9 +896,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between text-base">
                 <span>Cuarto:</span>
-                <span className="font-bold text-blue-500">
-                  {currentQuarter}
-                </span>
+                <span className="font-bold text-blue-500">{currentQuarter}</span>
               </div>
 
               <div className="flex gap-2">
@@ -899,7 +908,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                       })
                     }
                     disabled={isSessionFinished}
-                    className="w-1/2 justify-center flex items-center text-xs py-1.5"
+                    className="flex w-1/2 items-center justify-center py-1.5 text-xs"
                     variant="secondary"
                     size="sm"
                   >
@@ -912,11 +921,11 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                   disabled={isSessionFinished || currentQuarter >= 10}
                   className={`${
                     currentQuarter > 1 ? 'w-1/2' : 'w-full'
-                  } justify-center flex items-center text-xs py-1.5`}
+                  } flex items-center justify-center py-1.5 text-xs`}
                   size="sm"
                 >
                   Siguiente Cuarto
-                  <ArrowRightIcon className="h-4 w-4 ml-1" />
+                  <ArrowRightIcon className="ml-1 h-4 w-4" />
                 </Button>
               </div>
 
@@ -924,10 +933,10 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                 onClick={handleFinishSession}
                 disabled={isSessionFinished}
                 variant="danger"
-                className="w-full justify-center flex items-center text-xs py-1.5"
+                className="flex w-full items-center justify-center py-1.5 text-xs"
                 size="sm"
               >
-                <FlagIcon className="h-4 w-4 mr-1" />
+                <FlagIcon className="mr-1 h-4 w-4" />
                 Finalizar Sesión
               </Button>
             </div>
@@ -954,24 +963,24 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
             return (
               <div
                 key={team._id}
-                className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow"
+                className="rounded-lg bg-white p-3 shadow dark:bg-gray-800"
               >
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-bold text-lg">{team.name}</h3>
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-lg font-bold">{team.name}</h3>
                   <button
                     onClick={() => {
                       if (isSessionFinished) return;
                       logEvent('tiempo_muerto', { team: team.name });
                     }}
                     disabled={isSessionFinished}
-                    className="text-xs bg-indigo-100 text-indigo-800 hover:bg-indigo-200 dark:bg-indigo-900 dark:text-indigo-200 dark:hover:bg-indigo-800 px-2 py-1 rounded-full font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="rounded-full bg-indigo-100 px-2 py-1 text-xs font-semibold text-indigo-800 transition-colors hover:bg-indigo-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-indigo-900 dark:text-indigo-200 dark:hover:bg-indigo-800"
                   >
                     TM: {timeOutsCount}
                   </button>
                 </div>
 
-                <div className="flex relative items-stretch">
-                  <div className="space-y-1 flex-grow">
+                <div className="relative flex items-stretch">
+                  <div className="flex-grow space-y-1">
                     {team.players.map((player) => {
                       const isOnCourt = onCourtPlayerIds.has(player._id);
                       const isSubbedOut = isPartido && !isOnCourt;
@@ -1006,7 +1015,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                         <div
                           key={player._id}
                           {...bindPlayerCard(player)}
-                          className={`flex items-center justify-between touch-pan-y ${
+                          className={`flex touch-pan-y items-center justify-between ${
                             isSubbedOut ? 'opacity-50' : ''
                           }`}
                         >
@@ -1018,7 +1027,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                                 teamName: team.name,
                               })
                             }
-                            className={`flex-grow flex items-center text-left p-2 rounded-md ${
+                            className={`flex flex-grow items-center rounded-md p-2 text-left ${
                               selectedPlayer?.id === player._id
                                 ? 'bg-blue-500 text-white'
                                 : 'hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -1026,8 +1035,10 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                           >
                             {isPartido && (
                               <span
-                                className={`inline-block h-2.5 w-2.5 rounded-full mr-2 ${
-                                  isOnCourt ? 'bg-green-400 animate-pulse' : 'bg-gray-400'
+                                className={`mr-2 inline-block h-2.5 w-2.5 rounded-full ${
+                                  isOnCourt
+                                    ? 'bg-green-400 animate-pulse'
+                                    : 'bg-gray-400'
                                 }`}
                               ></span>
                             )}
@@ -1044,24 +1055,26 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
 
                             {foulCount > 0 && (
                               <ExclamationTriangleIcon
-                                className={`h-5 w-5 ml-2 ${
+                                className={`ml-2 h-5 w-5 ${
                                   selectedPlayer?.id === player._id
                                     ? 'text-white'
                                     : foulIconColorClass
                                 }`}
-                                title={`${foulCount} falta${foulCount === 1 ? '' : 's'}`}
+                                title={`${foulCount} falta${
+                                  foulCount === 1 ? '' : 's'
+                                }`}
                               />
                             )}
                           </button>
 
-                          <div className="flex ml-1">
+                          <div className="ml-1 flex">
                             {isPartido && isOnCourt && (
                               <button
                                 onClick={() => {
                                   setPlayerToSubOut(player);
                                   setShowSubModal(true);
                                 }}
-                                className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full"
+                                className="rounded-full p-2 hover:bg-gray-200 dark:hover:bg-gray-600"
                                 title="Sustituir"
                               >
                                 <ArrowsRightLeftIcon className="h-5 w-5" />
@@ -1070,7 +1083,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
 
                             <button
                               onClick={() => handleShowPlayerStats(player)}
-                              className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full"
+                              className="rounded-full p-2 hover:bg-gray-200 dark:hover:bg-gray-600"
                               title="Ver Estadísticas"
                             >
                               <MagnifyingGlassIcon className="h-5 w-5" />
@@ -1082,7 +1095,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                   </div>
 
                   {hasSubbedOutPlayers && (
-                    <div className="flex-shrink-0 flex items-stretch border-l border-gray-100 dark:border-gray-700 ml-1 pl-1">
+                    <div className="ml-1 flex flex-shrink-0 items-stretch border-l border-gray-100 pl-1 dark:border-gray-700">
                       <button
                         onClick={() =>
                           setShowBenchForTeam((prev) => ({
@@ -1090,7 +1103,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                             [team._id]: !prev[team._id],
                           }))
                         }
-                        className="text-xs text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 flex flex-col items-center justify-center py-2 px-1 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors w-full font-semibold tracking-widest"
+                        className="w-full rounded bg-gray-50 px-1 py-2 text-xs font-semibold tracking-widest text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 dark:bg-gray-700/50 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
                         style={{
                           writingMode: 'vertical-rl',
                           textOrientation: 'mixed',
@@ -1109,13 +1122,13 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
           })}
         </div>
 
-        <div className="flex-1 lg:max-w-2xl mx-auto flex flex-col gap-4">
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow flex justify-between items-center text-center">
+        <div className="mx-auto flex flex-1 flex-col gap-4 lg:max-w-2xl">
+          <div className="flex items-center justify-between rounded-lg bg-white p-4 text-center shadow dark:bg-gray-800">
             {session.sessionType === 'Partido' ||
             session.sessionType === 'Partido de Temporada' ? (
               <>
                 <div className="w-1/3">
-                  <div className="text-xl font-bold truncate">
+                  <div className="truncate text-xl font-bold">
                     {session.teams[0]?.name || 'Equipo A'}
                   </div>
                   <div className="text-4xl font-black text-orange-600 dark:text-orange-400">
@@ -1131,7 +1144,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                 </div>
 
                 <div className="w-1/3">
-                  <div className="text-xl font-bold truncate">
+                  <div className="truncate text-xl font-bold">
                     {session.teams[1]?.name || 'Equipo B'}
                   </div>
                   <div className="text-4xl font-black text-orange-600 dark:text-orange-400">
@@ -1150,7 +1163,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                   </div>
                 </div>
 
-                <div className="w-1/2 text-gray-500 border-l border-gray-200 dark:border-gray-700">
+                <div className="w-1/2 border-l border-gray-200 text-gray-500 dark:border-gray-700">
                   <div className="text-sm font-semibold uppercase tracking-widest">
                     Cuarto
                   </div>
@@ -1162,15 +1175,15 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
 
           <Court onClick={handleCourtClick} shotCoordinates={shotCoordinates} />
 
-          <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow mt-2">
+          <div className="mt-2 rounded-lg bg-white p-3 shadow dark:bg-gray-800">
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="font-bold text-lg truncate">Acciones Rápidas</h3>
-              <span className="text-blue-500 text-sm font-medium truncate ml-2">
+              <h3 className="truncate text-lg font-bold">Acciones Rápidas</h3>
+              <span className="ml-2 truncate text-sm font-medium text-blue-500">
                 {selectedPlayer?.name || '...'}
               </span>
             </div>
 
-            <div className="lg:hidden flex gap-2 overflow-x-auto pb-2 mb-3 snap-x">
+            <div className="mb-3 flex gap-2 overflow-x-auto pb-2 snap-x lg:hidden">
               {session.teams.flatMap((team) =>
                 team.players
                   .filter((player) => onCourtPlayerIds.has(player._id))
@@ -1184,7 +1197,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                           teamName: team.name,
                         })
                       }
-                      className={`flex-shrink-0 snap-center px-3 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${
+                      className={`snap-center whitespace-nowrap rounded-full px-3 py-2 text-sm font-bold transition-colors flex-shrink-0 ${
                         selectedPlayer?.id === player._id
                           ? 'bg-blue-600 text-white shadow-inner'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
@@ -1196,7 +1209,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
               )}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs sm:text-sm">
+            <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-5 sm:text-sm">
               <Button
                 size="sm"
                 onClick={() => logEvent('asistencia', {})}
@@ -1251,7 +1264,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
 
               <Button
                 size="sm"
-                onClick={() => logEvent('rebote', {})}
+                onClick={() => logEvent('rebote', { type: 'defensivo' })}
                 disabled={
                   !selectedPlayer ||
                   !onCourtPlayerIds.has(selectedPlayer.id) ||
@@ -1362,14 +1375,14 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
 
       {showShotChartModal && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4"
           onClick={() => setShowShotChartModal(false)}
         >
           <div
-            className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-4 shadow-2xl dark:bg-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center mb-4">
+            <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-bold">Mapa de Tiros (Partido)</h3>
               <button
                 onClick={() => setShowShotChartModal(false)}
@@ -1416,14 +1429,14 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
 
       {showAISuggestionModal && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60"
           onClick={() => setShowAISuggestionModal(false)}
         >
           <div
-            className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-2xl w-full max-w-lg"
+            className="w-full max-w-lg rounded-lg bg-white p-6 shadow-2xl dark:bg-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
+            <h3 className="mb-4 flex items-center gap-2 text-2xl font-bold">
               <LightBulbIcon className="h-6 w-6 text-yellow-400" />
               Sugerencia de la IA
             </h3>
@@ -1452,7 +1465,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                       .
                     </p>
 
-                    <div className="flex justify-end gap-4 mt-6">
+                    <div className="mt-6 flex justify-end gap-4">
                       <Button
                         variant="secondary"
                         onClick={() => setShowAISuggestionModal(false)}
@@ -1479,7 +1492,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                           }
                         }}
                       >
-                        <ArrowsRightLeftIcon className="h-5 w-5 mr-2" />
+                        <ArrowsRightLeftIcon className="mr-2 h-5 w-5" />
                         Aceptar Cambio
                       </Button>
                     </div>
@@ -1496,7 +1509,7 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
                       {aiSuggestion.reason}
                     </p>
 
-                    <div className="flex justify-end mt-6">
+                    <div className="mt-6 flex justify-end">
                       <Button onClick={() => setShowAISuggestionModal(false)}>
                         Entendido
                       </Button>
@@ -1512,9 +1525,9 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
       )}
 
       {showShotModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-20">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl space-y-4">
-            <h3 className="text-2xl font-bold text-center">
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="space-y-4 rounded-lg bg-white p-8 shadow-xl dark:bg-gray-800">
+            <h3 className="text-center text-2xl font-bold">
               {`Tiro de ${shotValue} Puntos`}
             </h3>
 
@@ -1547,9 +1560,9 @@ export default function GameTracker({ sessionId }: { sessionId: string }) {
       )}
 
       {showFreeThrowModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-20">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl space-y-4">
-            <h3 className="text-2xl font-bold text-center">Tiro Libre</h3>
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="space-y-4 rounded-lg bg-white p-8 shadow-xl dark:bg-gray-800">
+            <h3 className="text-center text-2xl font-bold">Tiro Libre</h3>
 
             <div className="flex justify-center gap-4">
               <Button
